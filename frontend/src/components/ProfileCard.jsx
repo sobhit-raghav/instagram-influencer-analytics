@@ -4,13 +4,17 @@ import { formatCompactNumber } from '../utils/formatNumbers';
 const ProfileCard = ({ profile }) => {
   if (!profile) return null;
 
+  const proxiedImageUrl = profile.profilePicUrl 
+    ? `http://localhost:8080/api/proxy?url=${encodeURIComponent(profile.profilePicUrl)}` 
+    : '';
+
   return (
     <Card>
       <CardContent>
         <Grid container spacing={3} alignItems="center">
           <Grid item xs={12} sm={3} md={2} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Avatar
-              src={profile.profilePicUrl}
+              src={proxiedImageUrl}
               alt={profile.name}
               sx={{ width: 120, height: 120, border: '3px solid', borderColor: 'primary.main' }}
             />
