@@ -29,12 +29,16 @@ const InfluencerPage = () => {
   const handleSearch = useCallback(async (username) => {
     if (!username) return;
     setSearchedUsername(username);
+
     try {
-      await Promise.all([
-        fetchProfile(username),
-        fetchPosts(username),
-        fetchReels(username)
-      ]);
+      const profileResult = await fetchProfile(username);
+
+      if (profileResult.success) {
+        await Promise.all([
+          fetchPosts(username),
+          fetchReels(username)
+        ]);
+      }
     } catch (err) {
       console.error("An unexpected error occurred during the search operation:", err);
     }
@@ -73,9 +77,9 @@ const InfluencerPage = () => {
             {posts && posts.length > 0 && <PostList posts={posts} />}
             {reels && reels.length > 0 && <ReelList reels={reels} />}
             {noDataFound && (
-              <Typography align='center' sx={{mt: 5}}>
-                No profile data found for "@<strong>{searchedUsername}</strong>". The profile may be private or does not exist.
-              </Typography>
+                <Typography align="center" sx={{mt: 5}}>
+                  No profile data found for "@<strong>{searchedUsername}</strong>". The profile may be private or does not exist.
+                </Typography>
             )}
           </>
         )}
