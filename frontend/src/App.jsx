@@ -1,8 +1,8 @@
+import InfluencerPage from './pages/InfluencerPage';
+
 function App() {
   return (
-    <div>
-      <h1>Influencer Analytics</h1>
-    </div>
+    <InfluencerPage />
   );
 }
 
