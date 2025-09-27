@@ -20,13 +20,13 @@ const getInfluencerPosts = async (req, res, next) => {
     const { username } = req.params;
 
     if (!username) {
-      throw new ApiError('Username is required in the request parameters.', 400);
+      return next(new ApiError('Username is required in the request parameters.', 400));
     }
 
     const influencer = await Influencer.findOne({ username }).select('_id');
 
     if (!influencer) {
-      throw new ApiError(`Influencer with username '${username}' was not found in the database.`, 404);
+      return next(new ApiError(`Influencer with username '${username}' was not found in the database.`, 404));
     }
 
     const posts = await Post.find({ influencer: influencer._id })

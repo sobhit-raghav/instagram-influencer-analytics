@@ -18,13 +18,13 @@ const getInfluencerProfile = async (req, res, next) => {
   try {
     const { username } = req.params;
     if (!username) {
-      throw new ApiError('Username is required in the request parameters.', 400);
+      return next(new ApiError('Username is required in the request parameters.', 400));
     }
 
     const scrapedData = await scrapeInstagramProfile(username);
 
     if (!scrapedData) {
-      throw new ApiError(`Profile for '${username}' not found, is private, or could not be scraped.`, 404);
+      return next(new ApiError(`Profile for '${username}' not found, is private, or could not be scraped.`, 404));
     }
 
     const { profile, posts, reels } = scrapedData;

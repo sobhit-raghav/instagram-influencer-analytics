@@ -2,6 +2,8 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'fs';
 
+import { ApiError } from '../middlewares/errorHandler.js';
+
 puppeteer.use(StealthPlugin());
 
 const COOKIE_FILE_PATH = './cookies.json';
@@ -123,7 +125,7 @@ export const scrapeInstagramProfile = async (username) => {
     });
 
     if (!profileData || !profileData.profilePicUrl) {
-      throw new Error('Could not extract essential profile data. The page structure may have changed.');
+      throw new ApiError(`Failed to scrape Instagram profile for ${username}. Check selectors or page structure.`, 500);
     }
     console.log('[SUCCESS] Profile data extracted successfully!');
 
@@ -185,7 +187,7 @@ export const scrapeInstagramProfile = async (username) => {
 
   } catch (error) {
     console.error(`[SCRAPER FAILED] An error occurred while scraping ${username}:`, error.message);
-    throw new Error(`Failed to scrape Instagram profile for ${username}. Check selectors or page structure.`);
+    throw new ApiError(`Failed to scrape Instagram profile for ${username}. Check selectors or page structure.`, 500);
   } finally {
     if (browser) await browser.close();
   }
