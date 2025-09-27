@@ -1,12 +1,10 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import fs from 'fs';
 
+import Session from '../models/Session.js';
 import { ApiError } from '../middlewares/errorHandler.js';
 
 puppeteer.use(StealthPlugin());
-
-const COOKIE_FILE_PATH = './cookies.json';
 
 const parseInstaNumber = (text) => {
   if (typeof text !== 'string') return 0;
@@ -47,11 +45,15 @@ const loginToInstagram = async (page) => {
   }
   
   await page.waitForSelector('a[href="#"]', { timeout: 15000 });
-  console.log('[SUCCESS] Login fully confirmed. Saving session cookies...');
+  console.log('[SUCCESS] Login fully confirmed. Saving session cookies to database...');
 
   const cookies = await page.cookies();
-  await fs.promises.writeFile(COOKIE_FILE_PATH, JSON.stringify(cookies, null, 2));
-  console.log('[SUCCESS] Session cookies saved.');
+  await Session.findOneAndUpdate(
+    { name: 'instagram_session' },
+    { cookies: cookies },
+    { upsert: true, new: true }
+  );
+  console.log('[SUCCESS] Session cookies saved to database.');
 };
 
 export const scrapeInstagramProfile = async (username) => {
@@ -72,11 +74,11 @@ export const scrapeInstagramProfile = async (username) => {
     });
     
     let sessionIsValid = false;
-    if (fs.existsSync(COOKIE_FILE_PATH)) {
-        console.log('[DEBUG] Saved session found. Loading cookies...');
-        const cookiesString = await fs.promises.readFile(COOKIE_FILE_PATH);
-        const cookies = JSON.parse(cookiesString);
-        await page.setCookie(...cookies);
+    const savedSession = await Session.findOne({ name: 'instagram_session' });
+
+    if (savedSession && savedSession.cookies) {
+        console.log('[DEBUG] Saved session found in database. Loading cookies...');
+        await page.setCookie(...savedSession.cookies);
         
         console.log('[DEBUG] Verifying session validity...');
         await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle2' });
@@ -163,7 +165,7 @@ export const scrapeInstagramProfile = async (username) => {
         newItems.forEach(item => mediaItems.set(item.shortcode, item));
 
         await page.evaluate('window.scrollBy(0, window.innerHeight)');
-        await new Promise(resolve => setTimeout(resolve, 2000)); 
+        await new Promise(resolve => setTimeout(resolve, 2000));
         scrollCount++;
     }
     
