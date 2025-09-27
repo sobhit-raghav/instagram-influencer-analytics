@@ -1,0 +1,63 @@
+import { Card, CardContent, Grid, Avatar, Typography, Box, Stack } from '@mui/material';
+import { formatCompactNumber } from '../utils/formatNumbers';
+
+const ProfileCard = ({ profile }) => {
+  if (!profile) return null;
+
+  return (
+    <Card>
+      <CardContent>
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} sm={3} md={2} sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Avatar
+              src={profile.profilePicUrl}
+              alt={profile.name}
+              sx={{ width: 120, height: 120, border: '3px solid', borderColor: 'primary.main' }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={9} md={10}>
+            <Box>
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
+                {profile.name}
+              </Typography>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                @{profile.username}
+              </Typography>
+              <Typography variant="body1" paragraph sx={{ mt: 1 }}>
+                {profile.bio}
+              </Typography>
+              <Stack direction="row" spacing={3} sx={{ mt: 2 }}>
+                <Box textAlign="center">
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {formatCompactNumber(profile.postsCount)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Posts
+                  </Typography>
+                </Box>
+                <Box textAlign="center">
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {formatCompactNumber(profile.followers)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Followers
+                  </Typography>
+                </Box>
+                <Box textAlign="center">
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {formatCompactNumber(profile.following)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Following
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default ProfileCard;
