@@ -1,35 +1,25 @@
-/**
- * Middleware for handling 404 Not Found errors.
- * This is triggered when a request is made to an endpoint that does not exist.
- *
- * @param {object} req - The Express request object.
- * @param {object} res - The Express response object.
- * @param {function} next - The Express next middleware function.
- */
+class ApiError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
 const notFound = (req, res, next) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
-  res.status(404);
-  next(error);
+  next(new ApiError(`Not Found - ${req.originalUrl}`, 404));
 };
 
-/**
- * Centralized error handling middleware.
- * This catches all errors that occur in the route handlers and provides a
- * consistent JSON response format.
- *
- * @param {Error} err - The error object.
- * @param {object} req - The Express request object.
- * @param {object} res - The Express response object.
- * @param {function} next - The Express next middleware function.
- */
 const errorHandler = (err, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  res.status(statusCode);
+  const statusCode = err.statusCode || res.statusCode || 500;
 
-  res.json({
-    message: err.message,
-    stack: process.env.NODE_ENV === 'production' ? '' : err.stack,
+  res.status(statusCode).json({
+    success: false,
+    status: statusCode,
+    message: err.message || "Internal Server Error",
+    stack: process.env.NODE_ENV === "production" ? undefined : err.stack,
+    path: req.originalUrl,
   });
 };
 
-export { notFound, errorHandler };
+export { ApiError, notFound, errorHandler };
