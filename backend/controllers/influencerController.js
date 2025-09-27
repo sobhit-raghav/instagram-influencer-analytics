@@ -3,6 +3,7 @@ import Post from '../models/Post.js';
 import Reel from '../models/Reel.js';
 import { scrapeInstagramProfile } from '../services/scraper.js';
 import { calculateEngagementMetrics } from '../utils/calculations.js';
+import { analyzeImage } from '../services/imageProcessing.js';
 
 /**
  * Handles the logic for fetching, processing, and storing an influencer's profile data.
@@ -34,13 +35,23 @@ const getInfluencerProfile = async (req, res) => {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    const postPromises = posts.map((postData) =>
-      Post.findOneAndUpdate(
+    const postPromises = posts.map(async (postData) => {
+      const analysisResults = await analyzeImage(postData.caption);
+      
+      const enrichedPostData = {
+        ...postData,
+        influencer: influencer._id,
+        tags: analysisResults.tags,
+        vibe: analysisResults.vibe,
+        quality: analysisResults.quality,
+      };
+
+      return Post.findOneAndUpdate(
         { shortcode: postData.shortcode },
-        { ...postData, influencer: influencer._id },
+        enrichedPostData,
         { new: true, upsert: true, setDefaultsOnInsert: true }
-      )
-    );
+      );
+    });
     const savedPosts = await Promise.all(postPromises);
 
     const reelPromises = reels.map((reelData) =>
