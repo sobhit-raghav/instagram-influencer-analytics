@@ -22,23 +22,27 @@ const daysAgo = (days) => {
 const loginToInstagram = async (page) => {
   console.log('[DEBUG] Navigating to login page...');
   await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'networkidle2' });
-  await page.screenshot({ path: 'debug_1_login_page.png' });
-
-  console.log('[DEBUG] Waiting for input fields...');
   await page.waitForSelector('input[name="username"]', { timeout: 15000 });
-  
-  console.log('[DEBUG] Typing credentials...');
   await page.type('input[name="username"]', process.env.INSTAGRAM_USER, { delay: 50 });
   await page.type('input[name="password"]', process.env.INSTAGRAM_PASS, { delay: 50 });
+  
+  await Promise.all([
+    page.click('button[type="submit"]'),
+    page.waitForNavigation({ waitUntil: 'networkidle2' }),
+  ]);
+  console.log('[SUCCESS] Initial login step complete. Checking for pop-ups...');
 
-  await page.screenshot({ path: 'debug_2_credentials_entered.png' });
-  console.log('[DEBUG] Clicking login button...');
-  await page.click('button[type="submit"]');
-
-  console.log('[DEBUG] Waiting for successful login navigation...');
-  await page.waitForSelector('a[href*="/accounts/edit/"]', { timeout: 20000 });
-  await page.screenshot({ path: 'debug_3_login_successful.png' });
-  console.log('[SUCCESS] Login successful!');
+  try {
+    const notNowButtonSelector = 'button:has-text("Not now")';
+    await page.waitForSelector(notNowButtonSelector, { timeout: 5000 });
+    await page.click(notNowButtonSelector);
+    console.log('[SUCCESS] "Save Info" pop-up found and dismissed.');
+  } catch (e) {
+    console.log('[DEBUG] No "Save Info" pop-up was found, proceeding.');
+  }
+  
+  await page.waitForSelector('a[href="#"]', { timeout: 15000 });
+  console.log('[SUCCESS] Login fully confirmed. Ready to scrape.');
 };
 
 export const scrapeInstagramProfile = async (username) => {
@@ -64,41 +68,44 @@ export const scrapeInstagramProfile = async (username) => {
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
     await page.goto(url, { waitUntil: 'networkidle2' });
 
-    const headerSelector = 'header';
-    console.log('[DEBUG] Waiting for profile header...');
-    await page.waitForSelector(headerSelector, { timeout: 15000 });
-    await page.screenshot({ path: 'debug_4_profile_page.png' });
+    const mainContentSelector = 'section > main';
+    await page.waitForSelector(mainContentSelector, { timeout: 15000 });
 
-    console.log('[DEBUG] Evaluating page to extract profile data...');
-    const profileData = await page.evaluate((uname) => {
-        const header = document.querySelector('header');
-        if (!header) return null;
-
-        const profilePicUrl = header.querySelector('img')?.src;
-        const nameElement = document.querySelector('header h1');
-        const followersLink = header.querySelector(`a[href="/${uname}/followers/"]`);
-        const followingLink = header.querySelector(`a[href="/${uname}/following/"]`);
-        const postsLi = header.querySelector('ul li:first-child');
-        
-        return {
-            username: uname,
-            name: nameElement ? nameElement.innerText : uname,
-            profilePicUrl: profilePicUrl || '',
-            bio: nameElement?.parentElement?.nextElementSibling?.innerText || '',
-            postsCount: postsLi?.querySelector('span > span')?.innerText || '0',
-            followers: followersLink?.querySelector('span')?.getAttribute('title') || '0',
-            following: followingLink?.querySelector('span')?.innerText || '0',
+    console.log('[DEBUG] Evaluating page using user-provided selectors...');
+    const profileData = await page.evaluate(() => {
+        const SELECTORS = {
+          profilePic: 'header img',
+          name: 'header h2',
+          bio: 'header section > span > div > span',
+          posts: 'header ul li:nth-child(1) span span',
+          followers: 'header ul li:nth-child(2) a span span',
+          following: 'header ul li:nth-child(3) a span span',
         };
-    }, username);
+
+        const getText = (selector) => document.querySelector(selector)?.innerText || '';
+        const getAttribute = (selector, attr) => document.querySelector(selector)?.[attr] || '';
+
+        return {
+            profilePicUrl: getAttribute(SELECTORS.profilePic, 'src'),
+            name: getText(SELECTORS.name),
+            bio: getText(SELECTORS.bio),
+            postsCount: getText(SELECTORS.posts),
+            followers: getAttribute(SELECTORS.followers, 'title') || getText(SELECTORS.followers),
+            following: getText(SELECTORS.following),
+        };
+    });
 
     if (!profileData || !profileData.profilePicUrl) {
-      throw new Error('Could not extract essential profile data after login.');
+      throw new Error('Could not extract essential profile data. The provided selectors may no longer be valid.');
     }
-    console.log('[SUCCESS] Profile data extracted.');
+    console.log('[SUCCESS] Profile data extracted successfully!');
 
     const postsAndReels = await page.evaluate(() => {
         const items = [];
-        document.querySelectorAll('main article a').forEach((el, index) => {
+        const gridContainerSelector = 'main > div > div > div';
+        const postLinks = document.querySelectorAll(`${gridContainerSelector} a`);
+
+        postLinks.forEach((el, index) => {
             if (index >= 12) return;
             const href = el.href;
             const img = el.querySelector('img');
@@ -113,6 +120,7 @@ export const scrapeInstagramProfile = async (username) => {
 
     const finalData = {
       profile: {
+        username,
         ...profileData,
         followers: parseInstaNumber(profileData.followers),
         following: parseInstaNumber(profileData.following),
@@ -127,14 +135,8 @@ export const scrapeInstagramProfile = async (username) => {
 
   } catch (error) {
     console.error(`[SCRAPER FAILED] An error occurred while scraping ${username}:`, error.message);
-
-    if (page) {
-      await page.screenshot({ path: 'debug_ERROR.png' });
-      // const html = await page.content();
-      // console.log(html);
-    }
-    
-    throw new Error(`Failed to scrape Instagram profile for ${username}. Check login credentials, network, or page structure.`);
+    if (page) await page.screenshot({ path: 'debug_ERROR.png' });
+    throw new Error(`Failed to scrape Instagram profile for ${username}. Check selectors or page structure.`);
   } finally {
     if (browser) await browser.close();
   }
