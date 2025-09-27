@@ -15,7 +15,9 @@ const parseInstaNumber = (text) => {
   if (lowerText.endsWith('b')) return Math.round(value * 1000000000);
   return isNaN(value) ? 0 : value;
 };
+
 const random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
 const daysAgo = (days) => {
   const date = new Date();
   date.setDate(date.getDate() - days);
@@ -23,7 +25,6 @@ const daysAgo = (days) => {
 };
 
 const loginToInstagram = async (page) => {
-  console.log('[DEBUG] Navigating to login page...');
   await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'networkidle2' });
   await page.waitForSelector('input[name="username"]', { timeout: 15000 });
   await page.type('input[name="username"]', process.env.INSTAGRAM_USER, { delay: 50 });
@@ -33,33 +34,28 @@ const loginToInstagram = async (page) => {
     page.click('button[type="submit"]'),
     page.waitForNavigation({ waitUntil: 'networkidle2' }),
   ]);
-  console.log('[SUCCESS] Initial login step complete. Checking for pop-ups...');
 
   try {
     const notNowButtonSelector = 'button:has-text("Not now")';
     await page.waitForSelector(notNowButtonSelector, { timeout: 5000 });
     await page.click(notNowButtonSelector);
-    console.log('[SUCCESS] "Save Info" pop-up found and dismissed.');
   } catch (e) {
-    console.log('[DEBUG] No "Save Info" pop-up was found, proceeding.');
+    // No pop-up found
   }
   
   await page.waitForSelector('a[href="#"]', { timeout: 15000 });
-  console.log('[SUCCESS] Login fully confirmed. Saving session cookies to database...');
-
+  
   const cookies = await page.cookies();
   await Session.findOneAndUpdate(
     { name: 'instagram_session' },
     { cookies: cookies },
     { upsert: true, new: true }
   );
-  console.log('[SUCCESS] Session cookies saved to database.');
 };
 
 export const scrapeInstagramProfile = async (username) => {
   let browser = null;
   let page = null;
-  console.log(`[SCRAPER] Starting scrape for: ${username}`);
   
   try {
     browser = await puppeteer.launch({
@@ -74,30 +70,31 @@ export const scrapeInstagramProfile = async (username) => {
     });
     
     let sessionIsValid = false;
-    const savedSession = await Session.findOne({ name: 'instagram_session' });
+    try {
+        const savedSession = await Session.findOne({ name: 'instagram_session' });
+        if (savedSession && savedSession.cookies && Array.isArray(savedSession.cookies)) {
+            const sanitizedCookies = savedSession.cookies.map(cookie => {
+                if (!cookie.url) {
+                    cookie.url = `https://www.${cookie.domain.startsWith('.') ? '' : '.'}${cookie.domain}`;
+                }
+                return cookie;
+            });
 
-    if (savedSession && savedSession.cookies) {
-        console.log('[DEBUG] Saved session found in database. Loading cookies...');
-        await page.setCookie(...savedSession.cookies);
-        
-        console.log('[DEBUG] Verifying session validity...');
-        await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle2' });
-        const homeIconSelector = 'a[href="/"] svg[aria-label="Home"]';
-        try {
-            await page.waitForSelector(homeIconSelector, { timeout: 10000 });
-            console.log('[SUCCESS] Session is valid. Skipping login.');
-            sessionIsValid = true;
-        } catch (e) {
-            console.log('[WARN] Session expired or invalid. Proceeding with full login.');
-            sessionIsValid = false;
+            await page.setCookie(...sanitizedCookies);
+            await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle2' });
+            const pageTitle = await page.title();
+            if (!pageTitle.toLowerCase().includes('log in')) {
+                sessionIsValid = true;
+            }
         }
+    } catch (e) {
+        sessionIsValid = false;
     }
 
     if (!sessionIsValid) {
         await loginToInstagram(page);
     }
 
-    console.log(`[DEBUG] Navigating to target profile: ${username}`);
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
     await page.goto(url, { waitUntil: 'networkidle2' });
 
@@ -129,7 +126,6 @@ export const scrapeInstagramProfile = async (username) => {
     if (!profileData || !profileData.profilePicUrl) {
       throw new ApiError(`Failed to scrape Instagram profile for ${username}. Check selectors or page structure.`, 500);
     }
-    console.log('[SUCCESS] Profile data extracted successfully!');
 
     const mediaItems = new Map();
     let scrollCount = 0;
@@ -140,13 +136,9 @@ export const scrapeInstagramProfile = async (username) => {
     while (scrollCount < maxScrolls) {
         const currentPosts = Array.from(mediaItems.values()).filter(item => item.type === 'post').length;
         const currentReels = Array.from(mediaItems.values()).filter(item => item.type === 'reel').length;
-
         if (currentPosts >= 10 && currentReels >= 5) {
-            console.log(`[SUCCESS] Goal met: Found ${currentPosts} posts and ${currentReels} reels. Stopping scroll.`);
             break;
         }
-
-        console.log(`[DEBUG] Scroll #${scrollCount + 1}. Found: ${currentPosts} posts, ${currentReels} reels. Scrolling for more...`);
         
         const newItems = await page.evaluate(() => {
             const items = [];
@@ -156,21 +148,21 @@ export const scrapeInstagramProfile = async (username) => {
                     const href = el.href;
                     const isReel = href.includes('/reel/');
                     const shortcode = href.split('/p/')[1]?.split('/')[0] || href.split('/reel/')[1]?.split('/')[0];
-                    if (shortcode) items.push({ shortcode, imageUrl: img.src, type: isReel ? 'reel' : 'post' });
+                    if (shortcode) {
+                        items.push({ shortcode, imageUrl: img.src, type: isReel ? 'reel' : 'post' });
+                    }
                 }
             });
             return items;
         });
 
         newItems.forEach(item => mediaItems.set(item.shortcode, item));
-
         await page.evaluate('window.scrollBy(0, window.innerHeight)');
         await new Promise(resolve => setTimeout(resolve, 2000));
         scrollCount++;
     }
     
     const allItems = Array.from(mediaItems.values());
-    console.log(`[SUCCESS] Total unique items found after scrolling: ${allItems.length}`);
 
     const finalData = {
       profile: {
@@ -184,12 +176,13 @@ export const scrapeInstagramProfile = async (username) => {
       reels: allItems.filter(p => p.type === 'reel').slice(0, 5).map((reel, i) => ({ ...reel, thumbnailUrl: reel.imageUrl, caption: `Scraped reel by ${username}!`, views: random(200000, 800000), likes: random(20000, 80000), comments: random(200, 2000), postedAt: daysAgo(i * 7 + 1) })),
     };
 
-    console.log(`[SUCCESS] Scrape complete for: ${username}. Returning ${finalData.posts.length} posts and ${finalData.reels.length} reels.`);
     return finalData;
 
   } catch (error) {
-    console.error(`[SCRAPER FAILED] An error occurred while scraping ${username}:`, error.message);
-    throw new ApiError(`Failed to scrape Instagram profile for ${username}. Check selectors or page structure.`, 500);
+    if (!(error instanceof ApiError)) {
+        throw new ApiError(`Failed to scrape Instagram profile for ${username}. Check selectors or page structure.`, 500);
+    }
+    throw error;
   } finally {
     if (browser) await browser.close();
   }
