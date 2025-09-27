@@ -68,15 +68,11 @@ export const scrapeInstagramProfile = async (username) => {
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
     await page.goto(url, { waitUntil: 'networkidle2' });
 
-    const mainContentSelector = 'section > main';
-    await page.waitForSelector(mainContentSelector, { timeout: 15000 });
-
-    console.log('[DEBUG] Evaluating page using user-provided selectors...');
     const profileData = await page.evaluate(() => {
         const SELECTORS = {
           profilePic: 'header img',
           name: 'header h2',
-          bio: 'header section > span > div > span',
+          bio: 'header section > div > span > div > span',
           posts: 'header ul li:nth-child(1) span span',
           followers: 'header ul li:nth-child(2) a span span',
           following: 'header ul li:nth-child(3) a span span',
@@ -85,10 +81,12 @@ export const scrapeInstagramProfile = async (username) => {
         const getText = (selector) => document.querySelector(selector)?.innerText || '';
         const getAttribute = (selector, attr) => document.querySelector(selector)?.[attr] || '';
 
+        let bioText = getText(SELECTORS.bio);
+        if (!bioText) bioText = document.querySelector('header h1')?.innerText || '';
         return {
             profilePicUrl: getAttribute(SELECTORS.profilePic, 'src'),
             name: getText(SELECTORS.name),
-            bio: getText(SELECTORS.bio),
+            bio: bioText,
             postsCount: getText(SELECTORS.posts),
             followers: getAttribute(SELECTORS.followers, 'title') || getText(SELECTORS.followers),
             following: getText(SELECTORS.following),
@@ -96,27 +94,57 @@ export const scrapeInstagramProfile = async (username) => {
     });
 
     if (!profileData || !profileData.profilePicUrl) {
-      throw new Error('Could not extract essential profile data. The provided selectors may no longer be valid.');
+      throw new Error('Could not extract essential profile data.');
     }
     console.log('[SUCCESS] Profile data extracted successfully!');
 
-    const postsAndReels = await page.evaluate(() => {
-        const items = [];
-        const gridContainerSelector = 'main > div > div > div';
-        const postLinks = document.querySelectorAll(`${gridContainerSelector} a`);
+    console.log('[DEBUG] Starting intelligent scroll to find 10 posts and 5 reels...');
+    const mediaItems = new Map();
+    let scrollCount = 0;
+    const maxScrolls = 15;
 
-        postLinks.forEach((el, index) => {
-            if (index >= 12) return;
-            const href = el.href;
-            const img = el.querySelector('img');
-            const isReel = el.querySelector('svg[aria-label="Reel icon"]') !== null;
-            if (img && href) {
-                const shortcode = href.split('/p/')[1]?.split('/')[0] || href.split('/reel/')[1]?.split('/')[0];
-                if (shortcode) items.push({ shortcode, imageUrl: img.src, type: isReel ? 'reel' : 'post' });
-            }
+    await page.waitForSelector('main a[href*="/p/"] img', { timeout: 15000 });
+
+    while (scrollCount < maxScrolls) {
+        const currentPosts = Array.from(mediaItems.values()).filter(item => item.type === 'post').length;
+        const currentReels = Array.from(mediaItems.values()).filter(item => item.type === 'reel').length;
+
+        if (currentPosts >= 10 && currentReels >= 5) {
+            console.log(`[SUCCESS] Goal met: Found ${currentPosts} posts and ${currentReels} reels. Stopping scroll.`);
+            break;
+        }
+
+        console.log(`[DEBUG] Scroll #${scrollCount + 1}. Found: ${currentPosts} posts, ${currentReels} reels. Scrolling for more...`);
+        
+        const newItems = await page.evaluate(() => {
+            const items = [];
+            document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]').forEach(el => {
+                const img = el.querySelector('img');
+                if (img) {
+                    const href = el.href;
+                    const isReel = href.includes('/reel/');
+                    const shortcode = href.split('/p/')[1]?.split('/')[0] || href.split('/reel/')[1]?.split('/')[0];
+                    if (shortcode) {
+                        items.push({ shortcode, imageUrl: img.src, type: isReel ? 'reel' : 'post' });
+                    }
+                }
+            });
+            return items;
         });
-        return items;
-    });
+
+        newItems.forEach(item => mediaItems.set(item.shortcode, item));
+
+        await page.evaluate('window.scrollBy(0, window.innerHeight)');
+        await new Promise(resolve => setTimeout(resolve, 2000)); 
+        scrollCount++;
+
+        if (scrollCount === maxScrolls) {
+          console.log(`[WARN] Reached max scrolls (${maxScrolls}). Proceeding with found items.`);
+        }
+    }
+    
+    const allItems = Array.from(mediaItems.values());
+    console.log(`[SUCCESS] Total unique items found after scrolling: ${allItems.length}`);
 
     const finalData = {
       profile: {
@@ -126,11 +154,11 @@ export const scrapeInstagramProfile = async (username) => {
         following: parseInstaNumber(profileData.following),
         postsCount: parseInstaNumber(profileData.postsCount),
       },
-      posts: postsAndReels.filter(p => p.type === 'post').slice(0, 10).map((post, i) => ({ ...post, caption: `Scraped post by ${username}!`, likes: random(50000, 150000), comments: random(500, 1500), postedAt: daysAgo(i * 3 + 2) })),
-      reels: postsAndReels.filter(p => p.type === 'reel').slice(0, 5).map((reel, i) => ({ ...reel, thumbnailUrl: reel.imageUrl, caption: `Scraped reel by ${username}!`, views: random(200000, 800000), likes: random(20000, 80000), comments: random(200, 2000), postedAt: daysAgo(i * 7 + 1) })),
+      posts: allItems.filter(p => p.type === 'post').slice(0, 10).map((post, i) => ({ ...post, caption: `Scraped post by ${username}!`, likes: random(50000, 150000), comments: random(500, 1500), postedAt: daysAgo(i * 3 + 2) })),
+      reels: allItems.filter(p => p.type === 'reel').slice(0, 5).map((reel, i) => ({ ...reel, thumbnailUrl: reel.imageUrl, caption: `Scraped reel by ${username}!`, views: random(200000, 800000), likes: random(20000, 80000), comments: random(200, 2000), postedAt: daysAgo(i * 7 + 1) })),
     };
 
-    console.log(`[SUCCESS] Scrape complete for: ${username}`);
+    console.log(`[SUCCESS] Scrape complete for: ${username}. Returning ${finalData.posts.length} posts and ${finalData.reels.length} reels.`);
     return finalData;
 
   } catch (error) {
