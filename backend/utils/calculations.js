@@ -10,16 +10,15 @@ export const calculateEngagementMetrics = (posts, followers) => {
   const numberOfPosts = posts.length;
 
   const totals = posts.reduce(
-    (acc, post) => {
-      acc.likes += post.likes || 0;
-      acc.comments += post.comments || 0;
-      return acc;
+    (accumulator, currentPost) => {
+      accumulator.likes += currentPost.likes || 0;
+      accumulator.comments += currentPost.comments || 0;
+      return accumulator;
     },
     { likes: 0, comments: 0 }
   );
 
-  const totalLikes = totals.likes;
-  const totalComments = totals.comments;
+  const { likes: totalLikes, comments: totalComments } = totals;
 
   const avgLikes = totalLikes / numberOfPosts;
   const avgComments = totalComments / numberOfPosts;

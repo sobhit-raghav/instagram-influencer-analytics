@@ -4,29 +4,30 @@ import Reel from '../models/Reel.js';
 import { scrapeInstagramProfile } from '../services/scraper.js';
 import { calculateEngagementMetrics } from '../utils/calculations.js';
 import { analyzeImage } from '../services/imageProcessing.js';
+import { analyzeVideo } from '../services/videoProcessing.js';
 
 /**
- * Handles the logic for fetching, processing, and storing an influencer's profile data.
+ * Orchestrates fetching, processing, and storing an influencer's profile.
  *
- * This function performs the following steps:
- * 1. Fetches the latest profile data using the scraper service.
- * 2. Creates or updates the influencer's profile in the database.
- * 3. Creates or updates the associated posts and reels.
- * 4. Calculates engagement metrics based on the latest posts.
- * 5. Updates the influencer's profile.
- * 6. Returns the complete, updated profile to the client.
- *
- * @param {object} req - The Express request object, containing the username in params.
+ * @param {object} req - The Express request object.
  * @param {object} res - The Express response object.
+ * @param {function} next - The Express next middleware function for error handling.
  */
-const getInfluencerProfile = async (req, res) => {
+const getInfluencerProfile = async (req, res, next) => {
   try {
     const { username } = req.params;
     if (!username) {
-      return res.status(400).json({ message: 'Username is required' });
+      res.status(400);
+      return next(new Error('Username is required in the request parameters.'));
     }
 
     const scrapedData = await scrapeInstagramProfile(username);
+
+    if (!scrapedData) {
+      res.status(404);
+      return next(new Error(`Profile for '${username}' not found, is private, or could not be scraped.`));
+    }
+
     const { profile, posts, reels } = scrapedData;
 
     const influencer = await Influencer.findOneAndUpdate(
@@ -37,30 +38,16 @@ const getInfluencerProfile = async (req, res) => {
 
     const postPromises = posts.map(async (postData) => {
       const analysisResults = await analyzeImage(postData.caption);
-      
-      const enrichedPostData = {
-        ...postData,
-        influencer: influencer._id,
-        tags: analysisResults.tags,
-        vibe: analysisResults.vibe,
-        quality: analysisResults.quality,
-      };
-
-      return Post.findOneAndUpdate(
-        { shortcode: postData.shortcode },
-        enrichedPostData,
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-      );
+      const enrichedPostData = { ...postData, influencer: influencer._id, ...analysisResults };
+      return Post.findOneAndUpdate({ shortcode: postData.shortcode }, enrichedPostData, { new: true, upsert: true });
     });
     const savedPosts = await Promise.all(postPromises);
 
-    const reelPromises = reels.map((reelData) =>
-      Reel.findOneAndUpdate(
-        { shortcode: reelData.shortcode },
-        { ...reelData, influencer: influencer._id },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-      )
-    );
+    const reelPromises = reels.map(async (reelData) => {
+      const analysisResults = await analyzeVideo(reelData.caption);
+      const enrichedReelData = { ...reelData, influencer: influencer._id, ...analysisResults };
+      return Reel.findOneAndUpdate({ shortcode: reelData.shortcode }, enrichedReelData, { new: true, upsert: true });
+    });
     await Promise.all(reelPromises);
 
     const engagementMetrics = calculateEngagementMetrics(savedPosts, influencer.followers);
@@ -71,8 +58,8 @@ const getInfluencerProfile = async (req, res) => {
     res.status(200).json(updatedInfluencer);
     
   } catch (error) {
-    console.error('Error in getInfluencerProfile:', error);
-    res.status(500).json({ message: 'Server error while fetching influencer profile.' });
+    console.error(`[Controller Error] An unexpected error occurred for ${req.params.username}:`, error.message);
+    next(error);
   }
 };
 
