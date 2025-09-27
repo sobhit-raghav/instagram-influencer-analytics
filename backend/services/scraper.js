@@ -68,12 +68,15 @@ export const scrapeInstagramProfile = async (username) => {
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
     await page.goto(url, { waitUntil: 'networkidle2' });
 
+    await page.waitForSelector('header', { timeout: 15000 });
+
+    console.log('[DEBUG] Evaluating page with selectors...');
     const profileData = await page.evaluate(() => {
         const SELECTORS = {
           profilePic: 'header img',
-          name: 'header h2',
-          bio: 'header section > div > span > div > span',
-          posts: 'header ul li:nth-child(1) span span',
+          name: 'header section > div > div > span',
+          bio: 'header section > div > div > div > a > div',
+          posts: 'header ul li:nth-child(1) button span span',
           followers: 'header ul li:nth-child(2) a span span',
           following: 'header ul li:nth-child(3) a span span',
         };
@@ -81,12 +84,10 @@ export const scrapeInstagramProfile = async (username) => {
         const getText = (selector) => document.querySelector(selector)?.innerText || '';
         const getAttribute = (selector, attr) => document.querySelector(selector)?.[attr] || '';
 
-        let bioText = getText(SELECTORS.bio);
-        if (!bioText) bioText = document.querySelector('header h1')?.innerText || '';
         return {
             profilePicUrl: getAttribute(SELECTORS.profilePic, 'src'),
             name: getText(SELECTORS.name),
-            bio: bioText,
+            bio: getText(SELECTORS.bio),
             postsCount: getText(SELECTORS.posts),
             followers: getAttribute(SELECTORS.followers, 'title') || getText(SELECTORS.followers),
             following: getText(SELECTORS.following),
@@ -94,11 +95,10 @@ export const scrapeInstagramProfile = async (username) => {
     });
 
     if (!profileData || !profileData.profilePicUrl) {
-      throw new Error('Could not extract essential profile data.');
+      throw new Error('Could not extract essential profile data. The page structure may have changed.');
     }
     console.log('[SUCCESS] Profile data extracted successfully!');
 
-    console.log('[DEBUG] Starting intelligent scroll to find 10 posts and 5 reels...');
     const mediaItems = new Map();
     let scrollCount = 0;
     const maxScrolls = 15;
@@ -124,9 +124,7 @@ export const scrapeInstagramProfile = async (username) => {
                     const href = el.href;
                     const isReel = href.includes('/reel/');
                     const shortcode = href.split('/p/')[1]?.split('/')[0] || href.split('/reel/')[1]?.split('/')[0];
-                    if (shortcode) {
-                        items.push({ shortcode, imageUrl: img.src, type: isReel ? 'reel' : 'post' });
-                    }
+                    if (shortcode) items.push({ shortcode, imageUrl: img.src, type: isReel ? 'reel' : 'post' });
                 }
             });
             return items;
@@ -137,10 +135,6 @@ export const scrapeInstagramProfile = async (username) => {
         await page.evaluate('window.scrollBy(0, window.innerHeight)');
         await new Promise(resolve => setTimeout(resolve, 2000)); 
         scrollCount++;
-
-        if (scrollCount === maxScrolls) {
-          console.log(`[WARN] Reached max scrolls (${maxScrolls}). Proceeding with found items.`);
-        }
     }
     
     const allItems = Array.from(mediaItems.values());
