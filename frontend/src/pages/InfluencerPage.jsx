@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Container, Box, CircularProgress, Alert, Typography } from '@mui/material';
 import Navbar from '../components/Navbar';
 import ProfileCard from '../components/ProfileCard';
@@ -8,34 +8,47 @@ import ReelList from '../components/ReelList';
 import useFetch from '../hooks/useFetch';
 import { getInfluencerProfile, getPosts, getReels } from '../api/api';
 
+const InitialStatePrompt = () => (
+  <Box textAlign="center" sx={{ mt: 10 }}>
+    <Typography variant="h4" gutterBottom>
+      Instagram Profile Analytics
+    </Typography>
+    <Typography variant="h6" color="text.secondary">
+      Enter an Instagram username above to get started.
+    </Typography>
+  </Box>
+);
+
 const InfluencerPage = () => {
-  const [currentUsername, setCurrentUsername] = useState('mrbeast');
+  const [hasSearched, setHasSearched] = useState(false);
 
   const { data: profile, loading: profileLoading, error: profileError, execute: fetchProfile } = useFetch(getInfluencerProfile);
   const { data: posts, loading: postsLoading, error: postsError, execute: fetchPosts } = useFetch(getPosts);
   const { data: reels, loading: reelsLoading, error: reelsError, execute: fetchReels } = useFetch(getReels);
 
-  const handleSearch = async (username) => {
-    setCurrentUsername(username);
-    await Promise.all([
-      fetchProfile(username),
-      fetchPosts(username),
-      fetchReels(username)
-    ]);
-  };
-
-  useEffect(() => {
-    handleSearch(currentUsername);
-  }, []);
+  const handleSearch = useCallback(async (username) => {
+    setHasSearched(true);
+    try {
+      await Promise.all([
+        fetchProfile(username),
+        fetchPosts(username),
+        fetchReels(username)
+      ]);
+    } catch (err) {
+      console.error("An unexpected error occurred during the search operation:", err);
+    }
+  }, [fetchProfile, fetchPosts, fetchReels]);
 
   const isLoading = profileLoading || postsLoading || reelsLoading;
-  const hasError = profileError || postsError || reelsError;
-  const noDataFound = !profile && !posts?.length && !reels?.length;
+  const combinedError = profileError || postsError || reelsError;
+  const noDataFound = hasSearched && !isLoading && !combinedError && !profile;
 
   return (
     <Box sx={{ minHeight: '100vh', pb: 4 }}>
       <Navbar onSearch={handleSearch} isLoading={isLoading} />
       <Container maxWidth="lg" sx={{ mt: 4 }}>
+        {!hasSearched && !isLoading && <InitialStatePrompt />}
+
         {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', my: 10 }}>
             <CircularProgress size={60} />
@@ -45,13 +58,13 @@ const InfluencerPage = () => {
           </Box>
         )}
 
-        {hasError && (
+        {combinedError && !isLoading && (
           <Alert severity="error" sx={{ my: 2 }}>
-            {profileError || postsError || reelsError}
+            {combinedError}
           </Alert>
         )}
 
-        {!isLoading && !hasError && (
+        {hasSearched && !isLoading && !combinedError && (
           <>
             {profile && <ProfileCard profile={profile} />}
             {profile && <AnalyticsSection profile={profile} />}

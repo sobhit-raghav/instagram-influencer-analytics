@@ -6,15 +6,15 @@ const API = axios.create({
 
 export const getInfluencerProfile = async (username) => {
   const { data } = await API.get(`/influencer/${username}`);
-  return data;
+  return data.data;
 };
 
 export const getPosts = async (username) => {
   const { data } = await API.get(`/posts/${username}`);
-  return data;
+  return data.data; 
 };
 
 export const getReels = async (username) => {
   const { data } = await API.get(`/reels/${username}`);
-  return data;
+  return data.data;
 };

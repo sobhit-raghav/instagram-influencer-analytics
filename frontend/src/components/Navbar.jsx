@@ -3,7 +3,7 @@ import { AppBar, Toolbar, Typography, TextField, Button, Box, InputAdornment } f
 import SearchIcon from '@mui/icons-material/Search';
 
 const Navbar = ({ onSearch, isLoading }) => {
-  const [username, setUsername] = useState('mrbeast');
+  const [username, setUsername] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -26,6 +26,7 @@ const Navbar = ({ onSearch, isLoading }) => {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             disabled={isLoading}
+            placeholder="e.g., mrbeast"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -34,7 +35,7 @@ const Navbar = ({ onSearch, isLoading }) => {
               ),
             }}
           />
-          <Button type="submit" variant="contained" color="primary" disabled={isLoading}>
+          <Button type="submit" variant="contained" color="primary" disabled={isLoading || !username.trim()}>
             {isLoading ? 'Loading...' : 'Search'}
           </Button>
         </Box>
