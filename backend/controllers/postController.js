@@ -1,6 +1,6 @@
 import Influencer from '../models/Influencer.js';
 import Post from '../models/Post.js';
-import ApiError from '../utils/ApiError.js';
+import { ApiError } from '../middlewares/errorHandler.js';
 
 /**
  * Retrieves the 10 most recent posts for a given influencer from the database.

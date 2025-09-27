@@ -1,7 +1,10 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import fs from 'fs';
 
 puppeteer.use(StealthPlugin());
+
+const COOKIE_FILE_PATH = './cookies.json';
 
 const parseInstaNumber = (text) => {
   if (typeof text !== 'string') return 0;
@@ -42,7 +45,11 @@ const loginToInstagram = async (page) => {
   }
   
   await page.waitForSelector('a[href="#"]', { timeout: 15000 });
-  console.log('[SUCCESS] Login fully confirmed. Ready to scrape.');
+  console.log('[SUCCESS] Login fully confirmed. Saving session cookies...');
+
+  const cookies = await page.cookies();
+  await fs.promises.writeFile(COOKIE_FILE_PATH, JSON.stringify(cookies, null, 2));
+  console.log('[SUCCESS] Session cookies saved.');
 };
 
 export const scrapeInstagramProfile = async (username) => {
@@ -62,7 +69,29 @@ export const scrapeInstagramProfile = async (username) => {
         'Accept-Language': 'en-US,en;q=0.9'
     });
     
-    await loginToInstagram(page);
+    let sessionIsValid = false;
+    if (fs.existsSync(COOKIE_FILE_PATH)) {
+        console.log('[DEBUG] Saved session found. Loading cookies...');
+        const cookiesString = await fs.promises.readFile(COOKIE_FILE_PATH);
+        const cookies = JSON.parse(cookiesString);
+        await page.setCookie(...cookies);
+        
+        console.log('[DEBUG] Verifying session validity...');
+        await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle2' });
+        const homeIconSelector = 'a[href="/"] svg[aria-label="Home"]';
+        try {
+            await page.waitForSelector(homeIconSelector, { timeout: 10000 });
+            console.log('[SUCCESS] Session is valid. Skipping login.');
+            sessionIsValid = true;
+        } catch (e) {
+            console.log('[WARN] Session expired or invalid. Proceeding with full login.');
+            sessionIsValid = false;
+        }
+    }
+
+    if (!sessionIsValid) {
+        await loginToInstagram(page);
+    }
 
     console.log(`[DEBUG] Navigating to target profile: ${username}`);
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
@@ -70,7 +99,6 @@ export const scrapeInstagramProfile = async (username) => {
 
     await page.waitForSelector('header', { timeout: 15000 });
 
-    console.log('[DEBUG] Evaluating page with selectors...');
     const profileData = await page.evaluate(() => {
         const SELECTORS = {
           profilePic: 'header img',
@@ -157,7 +185,6 @@ export const scrapeInstagramProfile = async (username) => {
 
   } catch (error) {
     console.error(`[SCRAPER FAILED] An error occurred while scraping ${username}:`, error.message);
-    if (page) await page.screenshot({ path: 'debug_ERROR.png' });
     throw new Error(`Failed to scrape Instagram profile for ${username}. Check selectors or page structure.`);
   } finally {
     if (browser) await browser.close();

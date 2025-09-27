@@ -5,7 +5,7 @@ import { scrapeInstagramProfile } from '../services/scraper.js';
 import { calculateEngagementMetrics } from '../utils/calculations.js';
 import { analyzeImage } from '../services/imageProcessing.js';
 import { analyzeVideo } from '../services/videoProcessing.js';
-import ApiError from '../utils/ApiError.js';
+import { ApiError } from '../middlewares/errorHandler.js';
 
 /**
  * Orchestrates fetching, processing, and storing an influencer's profile.

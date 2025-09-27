@@ -50,3 +50,6 @@ Desktop.ini
 # Miscellaneous
 *.tmp
 *.cache
+
+# Session files
+cookies.json

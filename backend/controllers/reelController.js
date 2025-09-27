@@ -1,6 +1,6 @@
 import Influencer from '../models/Influencer.js';
 import Reel from '../models/Reel.js';
-import ApiError from '../utils/ApiError.js';
+import { ApiError } from '../middlewares/errorHandler.js';
 
 /**
  * Retrieves the 5 most recent reels for a given influencer from the database.
