@@ -1,4 +1,7 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+
+puppeteer.use(StealthPlugin());
 
 const parseInstaNumber = (text) => {
   if (typeof text !== 'string') return 0;
@@ -22,7 +25,7 @@ const daysAgo = (days) => {
 
 export const scrapeInstagramProfile = async (username) => {
   let browser = null;
-  console.log(`[Live Scraper] Starting scrape for: ${username}`);
+  console.log(`[Stealth Scraper] Starting scrape for: ${username}`);
   
   try {
     browser = await puppeteer.launch({
@@ -37,36 +40,45 @@ export const scrapeInstagramProfile = async (username) => {
     });
     
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
-    const pageTitle = await page.title();
-    if (pageTitle.includes('Page not found') || pageTitle.includes('Content unavailable')) {
-        console.error(`[Live Scraper] Profile not found or is private for: ${username}`);
-        return null;
+    const cookieButtonSelector = 'button._a9--._a9_1';
+    try {
+        await page.waitForSelector(cookieButtonSelector, { timeout: 3000 });
+        await page.click(cookieButtonSelector);
+        console.log('>>> Consent modal found and dismissed. <<<');
+    } catch (e) {
+        console.log('>>> No consent modal found, proceeding. <<<');
     }
 
-    const profileData = await page.evaluate((uname) => {
-        const header = document.querySelector('header');
-        if (!header) return null;
+    const profilePicSelector = `img[alt*="${username}'s profile picture"]`;
+    await page.waitForSelector(profilePicSelector, { timeout: 100000 });
 
-        const profilePicUrl = header.querySelector('img')?.src;
-        const statElements = header.querySelectorAll('ul li span, header div[role="button"] span');
-        const nameElement = header.querySelector('h1, span[data-testid="ProfileName"]');
-        const bioElement = header.querySelector('div > h1');
+    const profileData = await page.evaluate((uname) => {
+        const profilePicUrl = document.querySelector(`img[alt*="${uname}'s profile picture"]`)?.src;
+        const nameElement = document.querySelector('section h1');
+        const stats = document.querySelectorAll('header ul li, section ul li');
+        
+        let posts = '0', followers = '0', following = '0';
+        if (stats.length === 3) {
+            posts = stats[0].querySelector('span > span')?.innerText || '0';
+            followers = stats[1].querySelector('a > span > span')?.getAttribute('title') || '0';
+            following = stats[2].querySelector('a > span > span')?.innerText || '0';
+        }
 
         return {
             username: uname,
             name: nameElement ? nameElement.innerText : uname,
             profilePicUrl: profilePicUrl || '',
-            bio: bioElement ? bioElement.innerText : '',
-            postsCount: statElements.length > 0 ? statElements[0].innerText : '0',
-            followers: statElements.length > 1 ? statElements[1].innerText : '0',
-            following: statElements.length > 2 ? statElements[2].innerText : '0',
+            bio: nameElement?.parentElement?.nextElementSibling?.innerText || '',
+            postsCount: posts,
+            followers: followers,
+            following: following,
         };
     }, username);
 
-    if (!profileData) {
-        throw new Error('Could not find the main header element to scrape profile data.');
+    if (!profileData || !profileData.profilePicUrl) {
+        throw new Error('Could not extract essential profile data. Page structure may have changed.');
     }
 
     const postsAndReels = await page.evaluate(() => {
@@ -99,33 +111,17 @@ export const scrapeInstagramProfile = async (username) => {
         following: parseInstaNumber(profileData.following),
         postsCount: parseInstaNumber(profileData.postsCount),
       },
-      posts: postsAndReels.filter(p => p.type === 'post').slice(0, 10).map((post, i) => ({
-        ...post,
-        caption: `A scraped post by ${username}! #${username} #live`,
-        likes: random(50000, 150000),
-        comments: random(500, 1500),
-        postedAt: daysAgo(i * 3 + 2),
-      })),
-      reels: postsAndReels.filter(p => p.type === 'reel').slice(0, 5).map((reel, i) => ({
-        ...reel,
-        thumbnailUrl: reel.imageUrl,
-        caption: `An amazing reel from ${username}!`,
-        views: random(200000, 800000),
-        likes: random(20000, 80000),
-        comments: random(200, 2000),
-        postedAt: daysAgo(i * 7 + 1),
-      })),
+      posts: postsAndReels.filter(p => p.type === 'post').slice(0, 10).map((post, i) => ({ ...post, caption: `Scraped post by ${username}!`, likes: random(50000, 150000), comments: random(500, 1500), postedAt: daysAgo(i * 3 + 2) })),
+      reels: postsAndReels.filter(p => p.type === 'reel').slice(0, 5).map((reel, i) => ({ ...reel, thumbnailUrl: reel.imageUrl, caption: `Scraped reel by ${username}!`, views: random(200000, 800000), likes: random(20000, 80000), comments: random(200, 2000), postedAt: daysAgo(i * 7 + 1) })),
     };
 
-    console.log(`[Live Scraper] Successfully scraped data for: ${username}`);
+    console.log(`[Stealth Scraper] Successfully scraped data for: ${username}`);
     return finalData;
 
   } catch (error) {
-    console.error(`[Live Scraper] An error occurred while scraping ${username}:`, error);
-    throw new Error(`Failed to scrape Instagram profile for ${username}. It may be private or the page structure has changed.`);
+    console.error(`[Stealth Scraper] An error occurred while scraping ${username}:`, error);
+    throw new Error(`Failed to scrape Instagram profile for ${username}. It may be private, require login, or the page structure has changed.`);
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    if (browser) await browser.close();
   }
 };
