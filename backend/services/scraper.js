@@ -2,6 +2,8 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 import Session from '../models/Session.js';
+import Post from '../models/Post.js';
+import Reel from '../models/Reel.js';
 import { ApiError } from '../middlewares/errorHandler.js';
 
 puppeteer.use(StealthPlugin());
@@ -127,20 +129,15 @@ export const scrapeInstagramProfile = async (username) => {
       throw new ApiError(`Failed to scrape Instagram profile for ${username}. Check selectors or page structure.`, 500);
     }
 
-    const mediaItems = new Map();
+    const newMediaItems = new Map();
     let scrollCount = 0;
     const maxScrolls = 15;
+    let foundCachedItem = false;
 
     await page.waitForSelector('main a[href*="/p/"] img', { timeout: 15000 });
 
-    while (scrollCount < maxScrolls) {
-        const currentPosts = Array.from(mediaItems.values()).filter(item => item.type === 'post').length;
-        const currentReels = Array.from(mediaItems.values()).filter(item => item.type === 'reel').length;
-        if (currentPosts >= 10 && currentReels >= 5) {
-            break;
-        }
-        
-        const newItems = await page.evaluate(() => {
+    while (scrollCount < maxScrolls && !foundCachedItem) {
+        const itemsOnPage = await page.evaluate(() => {
             const items = [];
             document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]').forEach(el => {
                 const img = el.querySelector('img');
@@ -156,13 +153,30 @@ export const scrapeInstagramProfile = async (username) => {
             return items;
         });
 
-        newItems.forEach(item => mediaItems.set(item.shortcode, item));
+        if (itemsOnPage.length === 0) break;
+
+        for (const item of itemsOnPage) {
+            if (newMediaItems.has(item.shortcode)) continue;
+
+            const existingPost = await Post.findOne({ shortcode: item.shortcode }).select('_id');
+            const existingReel = await Reel.findOne({ shortcode: item.shortcode }).select('_id');
+
+            if (existingPost || existingReel) {
+                console.log(`[SUCCESS] Found cached item (${item.shortcode}). Stopping scrape.`);
+                foundCachedItem = true;
+                break;
+            } else {
+                newMediaItems.set(item.shortcode, item);
+            }
+        }
+        if (foundCachedItem) break;
+
         await page.evaluate('window.scrollBy(0, window.innerHeight)');
         await new Promise(resolve => setTimeout(resolve, 2000));
         scrollCount++;
     }
     
-    const allItems = Array.from(mediaItems.values());
+    const allItems = Array.from(newMediaItems.values());
 
     const finalData = {
       profile: {
@@ -172,8 +186,8 @@ export const scrapeInstagramProfile = async (username) => {
         following: parseInstaNumber(profileData.following),
         postsCount: parseInstaNumber(profileData.postsCount),
       },
-      posts: allItems.filter(p => p.type === 'post').slice(0, 10).map((post, i) => ({ ...post, caption: `Scraped post by ${username}!`, likes: random(50000, 150000), comments: random(500, 1500), postedAt: daysAgo(i * 3 + 2) })),
-      reels: allItems.filter(p => p.type === 'reel').slice(0, 5).map((reel, i) => ({ ...reel, thumbnailUrl: reel.imageUrl, caption: `Scraped reel by ${username}!`, views: random(200000, 800000), likes: random(20000, 80000), comments: random(200, 2000), postedAt: daysAgo(i * 7 + 1) })),
+      posts: allItems.filter(p => p.type === 'post').slice(0, 10).map((post, i) => ({ ...post, caption: `Post by ${username}!`, likes: random(50000, 150000), comments: random(500, 1500), postedAt: daysAgo(i * 3 + 2) })),
+      reels: allItems.filter(p => p.type === 'reel').slice(0, 5).map((reel, i) => ({ ...reel, thumbnailUrl: reel.imageUrl, caption: `Reel by ${username}!`, views: random(200000, 800000), likes: random(20000, 80000), comments: random(200, 2000), postedAt: daysAgo(i * 7 + 1) })),
     };
 
     return finalData;

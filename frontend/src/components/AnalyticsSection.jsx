@@ -3,7 +3,6 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import CommentIcon from '@mui/icons-material/Comment';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { formatCompactNumber, formatPercentage } from '../utils/formatNumbers';
-import DemographicsChart from './DemographicsChart';
 
 const MetricCard = ({ title, value, icon }) => (
   <Card sx={{ height: '100%' }}>
@@ -54,9 +53,6 @@ const AnalyticsSection = ({ profile }) => {
           />
         </Grid>
       </Grid>
-      <Box sx={{ mt: 3 }}>
-        <DemographicsChart />
-      </Box>
     </Box>
   );
 };
