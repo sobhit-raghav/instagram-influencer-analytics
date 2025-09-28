@@ -15,43 +15,7 @@ const reelSchema = new mongoose.Schema(
     thumbnailUrl: {
       type: String,
       required: true,
-    },
-    caption: {
-      type: String,
-      default: '',
-    },
-    views: {
-      type: Number,
-      required: true,
-      default: 0,
-    },
-    likes: {
-      type: Number,
-      required: true,
-      default: 0,
-    },
-    comments: {
-      type: Number,
-      required: true,
-      default: 0,
-    },
-    postedAt: {
-      type: Date,
-      required: true,
-    },
-    tags: {
-      type: [String],
-      default: [],
-    },
-    vibe: {
-      type: String,
-      trim: true,
-      default: 'N/A',
-    },
-    eventsOrObjects: {
-      type: [String],
-      default: [],
-    },
+    }
   },
   {
     timestamps: true,

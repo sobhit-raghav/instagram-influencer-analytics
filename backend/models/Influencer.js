@@ -35,21 +35,7 @@ const influencerSchema = new mongoose.Schema(
       type: Number,
       required: true,
       default: 0,
-    },
-    engagement: {
-      avgLikes: {
-        type: Number,
-        default: 0,
-      },
-      avgComments: {
-        type: Number,
-        default: 0,
-      },
-      engagementRate: {
-        type: Number,
-        default: 0,
-      },
-    },
+    }
   },
   {
     timestamps: true,

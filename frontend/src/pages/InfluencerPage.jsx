@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { Container, Box, CircularProgress, Alert, Typography } from '@mui/material';
 import Navbar from '../components/Navbar';
 import ProfileCard from '../components/ProfileCard';
-import AnalyticsSection from '../components/AnalyticsSection';
 import PostList from '../components/PostList';
 import ReelList from '../components/ReelList';
 import useFetch from '../hooks/useFetch';
@@ -73,7 +72,6 @@ const InfluencerPage = () => {
         {hasSearched && !isLoading && !combinedError && (
           <>
             {profile && <ProfileCard profile={profile} />}
-            {profile && <AnalyticsSection profile={profile} />}
             {posts && posts.length > 0 && <PostList posts={posts} />}
             {reels && reels.length > 0 && <ReelList reels={reels} />}
             {noDataFound && (

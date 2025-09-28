@@ -2,9 +2,6 @@ import Influencer from '../models/Influencer.js';
 import Post from '../models/Post.js';
 import Reel from '../models/Reel.js';
 import { scrapeInstagramProfile } from '../services/scraper.js';
-import { calculateEngagementMetrics } from '../utils/calculations.js';
-import { analyzeImage } from '../services/imageProcessing.js';
-import { analyzeVideo } from '../services/videoProcessing.js';
 import { ApiError } from '../middlewares/errorHandler.js';
 
 /**
@@ -36,11 +33,9 @@ const getInfluencerProfile = async (req, res, next) => {
     );
 
     const postPromises = posts.map(async (postData) => {
-      const analysisResults = await analyzeImage(postData.caption);
       const enrichedPostData = {
         ...postData,
         influencer: influencer._id,
-        ...analysisResults,
       };
       return Post.findOneAndUpdate(
         { shortcode: postData.shortcode },
@@ -51,11 +46,9 @@ const getInfluencerProfile = async (req, res, next) => {
     const savedPosts = await Promise.all(postPromises);
 
     const reelPromises = reels.map(async (reelData) => {
-      const analysisResults = await analyzeVideo(reelData.caption);
       const enrichedReelData = {
         ...reelData,
         influencer: influencer._id,
-        ...analysisResults,
       };
       return Reel.findOneAndUpdate(
         { shortcode: reelData.shortcode },
@@ -64,10 +57,7 @@ const getInfluencerProfile = async (req, res, next) => {
       );
     });
     await Promise.all(reelPromises);
-
-    const engagementMetrics = calculateEngagementMetrics(savedPosts, influencer.followers);
-
-    influencer.engagement = engagementMetrics;
+    
     const updatedInfluencer = await influencer.save();
 
     res.status(200).json({

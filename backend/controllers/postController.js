@@ -30,7 +30,7 @@ const getInfluencerPosts = async (req, res, next) => {
     }
 
     const posts = await Post.find({ influencer: influencer._id })
-      .sort({ postedAt: -1 })
+      .sort({ createdAt: -1 })
       .limit(10);
 
     res.status(200).json({

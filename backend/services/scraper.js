@@ -18,14 +18,6 @@ const parseInstaNumber = (text) => {
   return isNaN(value) ? 0 : value;
 };
 
-const random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-const daysAgo = (days) => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date;
-};
-
 const loginToInstagram = async (page) => {
   console.log('[LOGIN] Navigating to Instagram login...');
   await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'domcontentloaded' });
@@ -62,17 +54,39 @@ const loginToInstagram = async (page) => {
     console.log('[LOGIN] No "Save Info" popup found.');
   }
 
-  console.log('[LOGIN] Waiting for home page element...');
   await page.waitForSelector('a[href="#"]', { timeout: 30000 });
 
   const cookies = await page.cookies();
-  console.log('[LOGIN] Saving session cookies...');
   await Session.findOneAndUpdate(
     { name: 'instagram_session' },
-    { cookies: cookies },
+    { cookies: JSON.stringify(cookies) },
     { upsert: true, new: true }
   );
   console.log('[LOGIN] Session saved successfully.');
+};
+
+const restoreSession = async (page) => {
+  const savedSession = await Session.findOne({ name: 'instagram_session' });
+  if (!savedSession || !savedSession.cookies) return false;
+
+  try {
+    const cookies = JSON.parse(savedSession.cookies);
+    const sanitizedCookies = cookies.map(cookie => {
+      if (!cookie.url) cookie.url = `https://${cookie.domain.replace(/^\./, '')}`;
+      return cookie;
+    });
+
+    await page.setCookie(...sanitizedCookies);
+    await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle2' });
+
+    const loggedIn = await page.evaluate(() => {
+      return !document.querySelector('input[name="username"]');
+    });
+    return loggedIn;
+  } catch (err) {
+    console.log('[SESSION] Failed to restore session:', err.message);
+    return false;
+  }
 };
 
 export const scrapeInstagramProfile = async (username) => {
@@ -93,36 +107,12 @@ export const scrapeInstagramProfile = async (username) => {
       'Accept-Language': 'en-US,en;q=0.9'
     });
 
-    let sessionIsValid = false;
-    try {
-      console.log('[SCRAPER] Checking saved session...');
-      const savedSession = await Session.findOne({ name: 'instagram_session' });
-      if (savedSession && savedSession.cookies && Array.isArray(savedSession.cookies)) {
-        console.log('[SCRAPER] Found saved session cookies. Applying...');
-        const sanitizedCookies = savedSession.cookies.map(cookie => {
-          if (!cookie.url) {
-            cookie.url = `https://www.${cookie.domain.startsWith('.') ? '' : '.'}${cookie.domain}`;
-          }
-          return cookie;
-        });
-
-        await page.setCookie(...sanitizedCookies);
-        await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle2' });
-        const pageTitle = await page.title();
-        console.log(`[SCRAPER] Page title after cookies: ${pageTitle}`);
-        if (!pageTitle.toLowerCase().includes('log in')) {
-          sessionIsValid = true;
-          console.log('[SCRAPER] Session is valid.');
-        }
-      }
-    } catch (e) {
-      console.log('[SCRAPER] Error validating session, will login again.');
-      sessionIsValid = false;
-    }
-
+    let sessionIsValid = await restoreSession(page);
     if (!sessionIsValid) {
-      console.log('[SCRAPER] Logging in to Instagram...');
+      console.log('[SCRAPER] Session invalid or expired. Logging in...');
       await loginToInstagram(page);
+    } else {
+      console.log('[SCRAPER] Session restored successfully.');
     }
 
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
@@ -202,8 +192,7 @@ export const scrapeInstagramProfile = async (username) => {
           console.log(`[SCRAPER] Found cached item (${item.shortcode}) Stopping scrape.`);
           foundCachedItem = true;
           break;
-        }
-        else {
+        } else {
           newMediaItems.set(item.shortcode, item);
           console.log(`[SCRAPER] New item added: ${item.shortcode} (${item.type})`);
         }
@@ -238,8 +227,8 @@ export const scrapeInstagramProfile = async (username) => {
         following: parseInstaNumber(profileData.following),
         postsCount: parseInstaNumber(profileData.postsCount),
       },
-      posts: allItems.filter(p => p.type === 'post').slice(0, 10).map((post, i) => ({ ...post, caption: `Post by ${username}!`, likes: random(50000, 150000), comments: random(500, 1500), postedAt: daysAgo(i * 3 + 2) })),
-      reels: allItems.filter(p => p.type === 'reel').slice(0, 5).map((reel, i) => ({ ...reel, thumbnailUrl: reel.imageUrl, caption: `Reel by ${username}!`, views: random(200000, 800000), likes: random(20000, 80000), comments: random(200, 2000), postedAt: daysAgo(i * 7 + 1) })),
+      posts: allItems.filter(p => p.type === 'post').slice(0, 10),
+      reels: allItems.filter(p => p.type === 'reel').slice(0, 5),
     };
 
     console.log('[SCRAPER] Final data prepared:', JSON.stringify(finalData.profile, null, 2));
