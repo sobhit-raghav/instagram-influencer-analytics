@@ -84,28 +84,20 @@ export const scrapeInstagramProfile = async (username) => {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       'Accept-Language': 'en-US,en;q=0.9'
     });
+
     if (!await restoreSession(page)) {
       logger.info('Session invalid or expired. Logging in...');
       await loginToInstagram(page);
     } else {
       logger.info('Session restored successfully.');
     }
+
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
     logger.debug(`Navigating to profile: ${url}`);
     await page.goto(url, { waitUntil: 'networkidle2' });
     await page.waitForSelector('header', { timeout: 15000 });
-    const profileData = await page.evaluate(() => {
-      const query = (selectors, attribute = 'innerText') => {
-        for (const selector of selectors) {
-          const element = document.querySelector(selector);
-          if (element) {
-            const value = attribute === 'innerText' ? element.innerText : element.getAttribute(attribute);
-            if (value) return value.trim();
-          }
-        }
-        return '';
-      };
 
+    const profileData = await page.evaluate(() => {
       const SELECTORS = {
         profilePic: ['header img'],
         name: ['header h2', 'header section > div > div > span'],
@@ -115,8 +107,21 @@ export const scrapeInstagramProfile = async (username) => {
           'header ul li:nth-child(1) button span span',
           'header ul li:nth-child(1) span'
         ],
-        followers: [`a[href*="/followers/"] span`, 'header ul li:nth-child(2) button span'],
-        following: [`a[href*="/following/"] span`, 'header ul li:nth-child(3) button span'],
+        followers: ['header ul li:nth-child(2) a span span'],
+        following: ['header ul li:nth-child(3) a span span']
+      };
+
+      const query = (selectors, attribute = 'innerText') => {
+        for (const selector of selectors) {
+          try {
+            const element = document.querySelector(selector);
+            if (element) {
+              const value = attribute === 'innerText' ? element.innerText : element.getAttribute(attribute);
+              if (value) return value.trim();
+            }
+          } catch (err) { }
+        }
+        return '';
       };
 
       return {
@@ -128,56 +133,84 @@ export const scrapeInstagramProfile = async (username) => {
         following: query(SELECTORS.following),
       };
     });
+
     if (!profileData || !profileData.profilePicUrl) {
       throw new ApiError(`Failed to scrape Instagram profile data for ${username}.`, 500);
     }
     logger.debug('Profile data extracted.');
-    const newMediaItems = new Map();
-    let scrollCount = 0;
-    const maxScrolls = 15;
-    let foundCachedItem = false;
-    await page.waitForSelector('main a[href*="/p/"] img', { timeout: 15000 });
-    while (scrollCount < maxScrolls && !foundCachedItem) {
-      const itemsOnPage = await page.evaluate(() => {
-        const items = [];
-        document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]').forEach(el => {
-          const img = el.querySelector('img');
-          if (img) {
-            const href = el.href;
-            const isReel = href.includes('/reel/');
-            const shortcode = href.split('/p/')[1]?.split('/')[0] || href.split('/reel/')[1]?.split('/')[0];
-            if (shortcode) {
-              if (isReel) {
-                items.push({ shortcode, thumbnailUrl: img.src, type: 'reel' });
-              } else {
-                items.push({ shortcode, imageUrl: img.src, type: 'post' });
+
+    const pageHtml = await page.content();
+    const htmlLower = pageHtml.toLowerCase();
+
+    const isPrivate =
+      /<h2[^>]*>\s*this account is private\s*<\/h2>/i.test(pageHtml) ||
+      htmlLower.includes('this account is private');
+
+    const isVerified =
+      /<svg[^>]+aria-label=["']verified["']/i.test(pageHtml) ||
+      /<title>\s*verified\s*<\/title>/i.test(pageHtml);
+
+    profileData.isPrivate = Boolean(isPrivate);
+    profileData.isVerified = Boolean(isVerified);
+
+    let allItems = [];
+    if (!profileData.isPrivate) {
+      logger.info('Account is public. Scraping media...');
+      const newMediaItems = new Map();
+      let scrollCount = 0;
+      const maxScrolls = 15;
+      let foundCachedItem = false;
+      await page.waitForSelector('main a[href*="/p/"] img', { timeout: 15000 });
+
+      while (scrollCount < maxScrolls && !foundCachedItem) {
+        const itemsOnPage = await page.evaluate(() => {
+          const items = [];
+          document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]').forEach(el => {
+            const img = el.querySelector('img');
+            if (img) {
+              const href = el.href;
+              const isReel = href.includes('/reel/');
+              const shortcode = href.split('/p/')[1]?.split('/')[0] || href.split('/reel/')[1]?.split('/')[0];
+              if (shortcode) {
+                if (isReel) {
+                  items.push({ shortcode, thumbnailUrl: img.src, type: 'reel' });
+                } else {
+                  items.push({ shortcode, imageUrl: img.src, type: 'post' });
+                }
               }
             }
-          }
+          });
+          return items;
         });
-        return items;
-      });
-      if (itemsOnPage.length === 0) break;
-      for (const item of itemsOnPage) {
-        if (newMediaItems.has(item.shortcode)) continue;
-        if (await Post.findOne({ shortcode: item.shortcode }) || await Reel.findOne({ shortcode: item.shortcode })) {
-          logger.info(`Found cached item (${item.shortcode}). Stopping scrape.`);
-          foundCachedItem = true;
-          break;
-        } else {
-          newMediaItems.set(item.shortcode, item);
+
+        if (itemsOnPage.length === 0) break;
+
+        for (const item of itemsOnPage) {
+          if (newMediaItems.has(item.shortcode)) continue;
+          if (await Post.findOne({ shortcode: item.shortcode }) || await Reel.findOne({ shortcode: item.shortcode })) {
+            logger.info(`Found cached item (${item.shortcode}). Stopping scrape.`);
+            foundCachedItem = true;
+            break;
+          } else {
+            newMediaItems.set(item.shortcode, item);
+          }
         }
+        if (foundCachedItem) break;
+
+        const postsCount = Array.from(newMediaItems.values()).filter(i => i.type === 'post').length;
+        const reelsCount = Array.from(newMediaItems.values()).filter(i => i.type === 'reel').length;
+        if (postsCount >= 10 && reelsCount >= 5) break;
+
+        await page.evaluate('window.scrollBy(0, window.innerHeight)');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        scrollCount++;
       }
-      if (foundCachedItem) break;
-      const postsCount = Array.from(newMediaItems.values()).filter(i => i.type === 'post').length;
-      const reelsCount = Array.from(newMediaItems.values()).filter(i => i.type === 'reel').length;
-      if (postsCount >= 10 && reelsCount >= 5) break;
-      await page.evaluate('window.scrollBy(0, window.innerHeight)');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      scrollCount++;
+      allItems = Array.from(newMediaItems.values());
+      logger.info(`Total new media items collected: ${allItems.length}`);
+    } else {
+      logger.info('Account is private. Skipping media scrape.');
     }
-    const allItems = Array.from(newMediaItems.values());
-    logger.info(`Total new media items collected: ${allItems.length}`);
+
     return {
       profile: {
         username,

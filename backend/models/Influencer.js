@@ -37,7 +37,15 @@ const influencerSchema = new mongoose.Schema(
       type: Number,
       required: true,
       default: 0,
-    }
+    },
+     isPrivate: {
+      type: Boolean,
+      default: false,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

@@ -1,4 +1,6 @@
 import { Card, CardContent, Grid, Avatar, Typography, Box, Stack, Link } from '@mui/material';
+import LockIcon from '@mui/icons-material/Lock';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import { formatCompactNumber } from '../utils/formatNumbers';
 
 const ProfileCard = ({ profile }) => {
@@ -22,19 +24,26 @@ const ProfileCard = ({ profile }) => {
           </Grid>
           <Grid item xs={12} sm={9} md={10}>
             <Box>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-                {profile.name}
-              </Typography>
-              <Link href={instaUrl} target="_blank" rel="noopener noreferrer" underline="hover">
-                <Typography
-                  variant="h6"
-                  color="text.secondary"
-                  gutterBottom
-                  sx={{ mt: 0.5, fontWeight: 500 }}
-                >
-                  @{profile.username}
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+                  {profile.name}
                 </Typography>
-              </Link>
+                {profile.isVerified && <VerifiedIcon color="primary" />}
+              </Stack>
+
+              <Stack direction="row" alignItems="center" spacing={1} gutterBottom>
+                <Link href={instaUrl} target="_blank" rel="noopener noreferrer" underline="hover">
+                  <Typography
+                    variant="h6"
+                    color="text.secondary"
+                    sx={{ mt: 0.5, fontWeight: 500 }}
+                  >
+                    @{profile.username}
+                  </Typography>
+                </Link>
+                {profile.isPrivate && <LockIcon color="warning" fontSize="small" />}
+              </Stack>
+
               {profile.bio && (
                 <Typography variant="body1" paragraph sx={{ mt: 1, color: 'text.primary' }}>
                   {profile.bio}
