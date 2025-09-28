@@ -3,6 +3,7 @@ import Post from '../models/Post.js';
 import Reel from '../models/Reel.js';
 import { scrapeInstagramProfile } from '../services/scraper.js';
 import { ApiError } from '../middlewares/errorHandler.js';
+import logger from '../utils/logger.js';
 
 /**
  * Orchestrates fetching, processing, and storing an influencer's profile.
@@ -18,10 +19,28 @@ const getInfluencerProfile = async (req, res, next) => {
       return next(new ApiError('Username is required in the request parameters.', 400));
     }
 
-    const scrapedData = await scrapeInstagramProfile(username);
+    const CACHE_DURATION_MS = 10 * 60 * 1000;
 
+    const existingInfluencer = await Influencer.findOne({ username });
+
+    if (existingInfluencer) {
+      const lastUpdated = new Date(existingInfluencer.updatedAt).getTime();
+      const isCacheFresh = (new Date().getTime() - lastUpdated) < CACHE_DURATION_MS;
+
+      if (isCacheFresh) {
+        logger.info(`Cache hit for "${username}". Returning data from DB.`);
+        return res.status(200).json({
+          success: true,
+          data: existingInfluencer,
+          source: 'cache'
+        });
+      }
+    }
+
+    logger.info(`Cache miss or stale for "${username}". Starting scrape.`);
+    const scrapedData = await scrapeInstagramProfile(username);
     if (!scrapedData) {
-      return next(new ApiError(`Profile for '${username}' not found, is private, or could not be scraped.`, 404));
+      return next(new ApiError(`Profile for '${username}' not found or could not be scraped.`, 404));
     }
 
     const { profile, posts, reels } = scrapedData;
@@ -32,33 +51,29 @@ const getInfluencerProfile = async (req, res, next) => {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    const postPromises = posts.map(async (postData) => {
-      const enrichedPostData = {
-        ...postData,
-        influencer: influencer._id,
-      };
-      return Post.findOneAndUpdate(
-        { shortcode: postData.shortcode },
-        enrichedPostData,
-        { new: true, upsert: true }
-      );
-    });
-    const savedPosts = await Promise.all(postPromises);
+    if (posts.length > 0) {
+      const postOps = posts.map(postData => ({
+        updateOne: {
+          filter: { shortcode: postData.shortcode },
+          update: { $set: { ...postData, influencer: influencer._id } },
+          upsert: true
+        }
+      }));
+      await Post.bulkWrite(postOps);
+    }
 
-    const reelPromises = reels.map(async (reelData) => {
-      const enrichedReelData = {
-        ...reelData,
-        influencer: influencer._id,
-      };
-      return Reel.findOneAndUpdate(
-        { shortcode: reelData.shortcode },
-        enrichedReelData,
-        { new: true, upsert: true }
-      );
-    });
-    await Promise.all(reelPromises);
-    
-    const updatedInfluencer = await influencer.save();
+    if (reels.length > 0) {
+      const reelOps = reels.map(reelData => ({
+        updateOne: {
+          filter: { shortcode: reelData.shortcode },
+          update: { $set: { ...reelData, influencer: influencer._id } },
+          upsert: true
+        }
+      }));
+      await Reel.bulkWrite(reelOps);
+    }
+
+    const updatedInfluencer = await Influencer.findById(influencer._id);
 
     res.status(200).json({
       success: true,
