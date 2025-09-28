@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import chromium from '@sparticuz/chromium';
 
 import Session from '../models/Session.js';
 import Post from '../models/Post.js';
@@ -55,7 +56,7 @@ const loginToInstagram = async (page) => {
     { upsert: true, new: true }
   );
 
-  logger.info('Session saved successfully.');
+  // logger.info('Session saved successfully.');
 };
 
 const restoreSession = async (page) => {
@@ -83,10 +84,12 @@ export const scrapeInstagramProfile = async (username) => {
   let page = null;
 
   try {
-    logger.debug('Launching browser...');
+    logger.debug('Launching browser for production...');
     browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
     });
 
     page = await browser.newPage();
@@ -96,7 +99,7 @@ export const scrapeInstagramProfile = async (username) => {
     });
 
     if (!await restoreSession(page)) {
-      logger.info('Session invalid or expired. Logging in...');
+      // logger.info('Session invalid or expired. Logging in...');
       await loginToInstagram(page);
     } else {
       logger.info('Session restored successfully.');
@@ -104,8 +107,8 @@ export const scrapeInstagramProfile = async (username) => {
 
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
     logger.debug(`Navigating to profile: ${url}`);
-    await page.goto(url, { waitUntil: 'networkidle2' });
-    await page.waitForSelector('header', { timeout: 15000 });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+    await page.waitForSelector('header', { timeout: 20000 });
 
     const profileData = await page.evaluate(() => {
       const SELECTORS = {
@@ -166,7 +169,7 @@ export const scrapeInstagramProfile = async (username) => {
 
     let allItems = [];
     if (!profileData.isPrivate) {
-      logger.info('Account is public. Scraping media...');
+      // logger.info('Account is public. Scraping media...');
       const newMediaItems = new Map();
       let scrollCount = 0;
       const maxScrolls = 15;
@@ -200,7 +203,7 @@ export const scrapeInstagramProfile = async (username) => {
         for (const item of itemsOnPage) {
           if (newMediaItems.has(item.shortcode)) continue;
           if (await Post.findOne({ shortcode: item.shortcode }) || await Reel.findOne({ shortcode: item.shortcode })) {
-            logger.info(`Found cached item (${item.shortcode}). Stopping scrape.`);
+            // logger.info(`Found cached item (${item.shortcode}). Stopping scrape.`);
             foundCachedItem = true;
             break;
           } else {
@@ -220,7 +223,7 @@ export const scrapeInstagramProfile = async (username) => {
       }
 
       allItems = Array.from(newMediaItems.values());
-      logger.info(`Total new media items collected: ${allItems.length}`);
+      // logger.info(`Total new media items collected: ${allItems.length}`);
     } else {
       logger.info('Account is private. Skipping media scrape.');
     }
