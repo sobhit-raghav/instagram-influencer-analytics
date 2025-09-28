@@ -7,19 +7,19 @@ const Navbar = ({ onSearch, isLoading }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (username.trim()) {
-      onSearch(username.trim());
-    }
+    const trimmed = username.trim();
+    if (trimmed) onSearch(trimmed);
   };
 
   return (
-    <AppBar position="static" sx={{ background: '#1e1e1e', boxShadow: 'none', borderBottom: '1px solid #333' }}>
-      <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
+    <AppBar position="static" sx={{ backgroundColor: 'background.paper', borderBottom: '1px solid #333', boxShadow: 'none' }}>
+      <Toolbar sx={{ flexWrap: 'wrap', justifyContent: 'space-between', gap: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
           Influencer Analytics
         </Typography>
-        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, maxWidth: 400, gap: 1 }}>
           <TextField
+            fullWidth
             label="Instagram Username"
             variant="outlined"
             size="small"
@@ -30,13 +30,19 @@ const Navbar = ({ onSearch, isLoading }) => {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon />
+                  <SearchIcon color="action" />
                 </InputAdornment>
               ),
             }}
           />
-          <Button type="submit" variant="contained" color="primary" disabled={isLoading || !username.trim()}>
-            {isLoading ? 'Loading...' : 'Search'}
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            disabled={isLoading || !username.trim()}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            {isLoading ? 'Searching...' : 'Search'}
           </Button>
         </Box>
       </Toolbar>

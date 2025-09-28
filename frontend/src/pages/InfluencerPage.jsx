@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Container, Box, CircularProgress, Alert, Typography } from '@mui/material';
+import { Container, Box, CircularProgress, Alert, Typography, Stack } from '@mui/material';
 import Navbar from '../components/Navbar';
 import ProfileCard from '../components/ProfileCard';
 import PostList from '../components/PostList';
@@ -8,19 +8,19 @@ import useFetch from '../hooks/useFetch';
 import { getInfluencerProfile, getPosts, getReels } from '../api/api';
 
 const InitialStatePrompt = () => (
-  <Box textAlign="center" sx={{ mt: 10 }}>
-    <Typography variant="h4" gutterBottom>
+  <Box textAlign="center" sx={{ mt: 12 }}>
+    <Typography variant="h3" gutterBottom>
       Instagram Profile Analytics
     </Typography>
     <Typography variant="h6" color="text.secondary">
-      Enter an Instagram username above to get started.
+      Enter an Instagram username above to get started
     </Typography>
   </Box>
 );
 
 const InfluencerPage = () => {
   const [searchedUsername, setSearchedUsername] = useState('');
-  
+
   const { data: profile, loading: profileLoading, error: profileError, execute: fetchProfile } = useFetch(getInfluencerProfile);
   const { data: posts, loading: postsLoading, error: postsError, execute: fetchPosts } = useFetch(getPosts);
   const { data: reels, loading: reelsLoading, error: reelsError, execute: fetchReels } = useFetch(getReels);
@@ -31,15 +31,14 @@ const InfluencerPage = () => {
 
     try {
       const profileResult = await fetchProfile(username);
-
-      if (profileResult.success) {
+      if (profileResult?.success) {
         await Promise.all([
           fetchPosts(username),
           fetchReels(username)
         ]);
       }
     } catch (err) {
-      console.error("An unexpected error occurred during the search operation:", err);
+      console.error("Unexpected error during search:", err);
     }
   }, [fetchProfile, fetchPosts, fetchReels]);
 
@@ -49,22 +48,22 @@ const InfluencerPage = () => {
   const hasSearched = !!searchedUsername;
 
   return (
-    <Box sx={{ minHeight: '100vh', pb: 4 }}>
+    <Box sx={{ minHeight: '100vh', pb: 6, backgroundColor: 'background.default' }}>
       <Navbar onSearch={handleSearch} isLoading={isLoading} />
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: 5 }}>
         {!hasSearched && !isLoading && <InitialStatePrompt />}
 
         {isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', my: 10 }}>
+          <Stack direction="row" spacing={2} alignItems="center" justifyContent="center" sx={{ mt: 12 }}>
             <CircularProgress size={60} />
-            <Typography variant="h6" sx={{ ml: 2, alignSelf: 'center' }}>
+            <Typography variant="h6">
               Scraping data for @{searchedUsername}...
             </Typography>
-          </Box>
+          </Stack>
         )}
 
         {combinedError && !isLoading && (
-          <Alert severity="error" sx={{ my: 2 }}>
+          <Alert severity="error" sx={{ my: 4 }}>
             {combinedError}
           </Alert>
         )}
@@ -72,12 +71,14 @@ const InfluencerPage = () => {
         {hasSearched && !isLoading && !combinedError && (
           <>
             {profile && <ProfileCard profile={profile} />}
-            {posts && posts.length > 0 && <PostList posts={posts} />}
-            {reels && reels.length > 0 && <ReelList reels={reels} />}
+            {posts && posts.length > 0 && <PostList posts={posts} username={profile.username} />}
+            {reels && reels.length > 0 && <ReelList reels={reels} username={profile.username} />}
             {noDataFound && (
-                <Typography align="center" sx={{mt: 5}}>
-                  No profile data found for "@<strong>{searchedUsername}</strong>". The profile may be private or does not exist.
+              <Box textAlign="center" sx={{ mt: 10 }}>
+                <Typography variant="h6">
+                  No profile data found for <strong>@{searchedUsername}</strong>. The profile may be private or does not exist.
                 </Typography>
+              </Box>
             )}
           </>
         )}

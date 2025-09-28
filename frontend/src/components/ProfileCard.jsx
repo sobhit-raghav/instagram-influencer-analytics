@@ -4,14 +4,13 @@ import { formatCompactNumber } from '../utils/formatNumbers';
 const ProfileCard = ({ profile }) => {
   if (!profile) return null;
 
-  const proxiedImageUrl = profile.profilePicUrl 
-    ? `http://localhost:8080/api/proxy?url=${encodeURIComponent(profile.profilePicUrl)}` 
+  const proxiedImageUrl = profile.profilePicUrl
+    ? `http://localhost:8080/api/proxy?url=${encodeURIComponent(profile.profilePicUrl)}`
     : '';
-
   const instaUrl = `https://www.instagram.com/${profile.username}/`;
 
   return (
-    <Card>
+    <Card sx={{ mb: 4, borderRadius: 3, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
       <CardContent>
         <Grid container spacing={3} alignItems="center">
           <Grid item xs={12} sm={3} md={2} sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -23,23 +22,25 @@ const ProfileCard = ({ profile }) => {
           </Grid>
           <Grid item xs={12} sm={9} md={10}>
             <Box>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
                 {profile.name}
               </Typography>
-              <Link 
-                href={instaUrl} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                underline="hover"
-              >
-                <Typography variant="h6" color="text.secondary" gutterBottom>
+              <Link href={instaUrl} target="_blank" rel="noopener noreferrer" underline="hover">
+                <Typography
+                  variant="h6"
+                  color="text.secondary"
+                  gutterBottom
+                  sx={{ mt: 0.5, fontWeight: 500 }}
+                >
                   @{profile.username}
                 </Typography>
               </Link>
-              <Typography variant="body1" paragraph sx={{ mt: 1 }}>
-                {profile.bio || ''}
-              </Typography>
-              <Stack direction="row" spacing={3} sx={{ mt: 2 }}>
+              {profile.bio && (
+                <Typography variant="body1" paragraph sx={{ mt: 1, color: 'text.primary' }}>
+                  {profile.bio}
+                </Typography>
+              )}
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 2, sm: 3 }} sx={{ mt: 2 }}>
                 <Box textAlign="center">
                   <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                     {formatCompactNumber(profile.postsCount)}
