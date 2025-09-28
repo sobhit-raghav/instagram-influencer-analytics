@@ -20,15 +20,12 @@ const parseInstaNumber = (text) => {
 };
 
 const loginToInstagram = async (page) => {
-  logger.debug('Navigating to Instagram login...');
   await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('input[name="username"]', { timeout: 30000 });
 
-  logger.debug('Typing credentials...');
   await page.type('input[name="username"]', process.env.INSTAGRAM_USER, { delay: 50 });
   await page.type('input[name="password"]', process.env.INSTAGRAM_PASS, { delay: 50 });
 
-  logger.debug('Submitting login form...');
   await Promise.all([
     page.click('button[type="submit"]'),
     page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
@@ -54,8 +51,6 @@ const loginToInstagram = async (page) => {
     { cookies: JSON.stringify(cookies) },
     { upsert: true, new: true }
   );
-
-  logger.info('Session saved successfully.');
 };
 
 const restoreSession = async (page) => {
@@ -73,7 +68,6 @@ const restoreSession = async (page) => {
 
     return await page.evaluate(() => !document.querySelector('input[name="username"]'));
   } catch (err) {
-    logger.error('Failed to restore session:', err.message);
     return false;
   }
 };
@@ -83,7 +77,6 @@ export const scrapeInstagramProfile = async (username) => {
   let page = null;
 
   try {
-    logger.debug('Launching browser...');
     browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
@@ -96,14 +89,10 @@ export const scrapeInstagramProfile = async (username) => {
     });
 
     if (!await restoreSession(page)) {
-      logger.info('Session invalid or expired. Logging in...');
       await loginToInstagram(page);
-    } else {
-      logger.info('Session restored successfully.');
     }
 
     const url = `${process.env.INSTAGRAM_BASE_URL}/${username}/`;
-    logger.debug(`Navigating to profile: ${url}`);
     await page.goto(url, { waitUntil: 'networkidle2' });
     await page.waitForSelector('header', { timeout: 15000 });
 
@@ -148,8 +137,6 @@ export const scrapeInstagramProfile = async (username) => {
       throw new ApiError(`Failed to scrape Instagram profile data for ${username}.`, 500);
     }
 
-    logger.debug('Profile data extracted.');
-
     const pageHtml = await page.content();
     const htmlLower = pageHtml.toLowerCase();
 
@@ -166,7 +153,6 @@ export const scrapeInstagramProfile = async (username) => {
 
     let allItems = [];
     if (!profileData.isPrivate) {
-      logger.info('Account is public. Scraping media...');
       const newMediaItems = new Map();
       let scrollCount = 0;
       const maxScrolls = 15;
@@ -200,7 +186,6 @@ export const scrapeInstagramProfile = async (username) => {
         for (const item of itemsOnPage) {
           if (newMediaItems.has(item.shortcode)) continue;
           if (await Post.findOne({ shortcode: item.shortcode }) || await Reel.findOne({ shortcode: item.shortcode })) {
-            logger.info(`Found cached item (${item.shortcode}). Stopping scrape.`);
             foundCachedItem = true;
             break;
           } else {
@@ -220,7 +205,6 @@ export const scrapeInstagramProfile = async (username) => {
       }
 
       allItems = Array.from(newMediaItems.values());
-      logger.info(`Total new media items collected: ${allItems.length}`);
     } else {
       logger.info('Account is private. Skipping media scrape.');
     }
