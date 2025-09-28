@@ -7,36 +7,49 @@ const ReelCard = ({ reel, username }) => {
     : '';
 
   return (
-    <Link href={reelUrl} target="_blank" rel="noopener noreferrer" underline="none">
+    <Link
+      href={reelUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      underline="none"
+      sx={{ display: 'block', height: '100%' }}
+    >
       <Card
         sx={{
           position: 'relative',
           height: '100%',
           borderRadius: 3,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-          transition: 'transform 0.3s, box-shadow 0.3s',
-          '&:hover': { transform: 'scale(1.03)', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' },
+          overflow: 'hidden',
+          backgroundColor: 'background.paper',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
+          '&:hover': {
+            transform: 'translateY(-6px) scale(1.02)',
+            boxShadow: '0 10px 28px rgba(0,0,0,0.55)',
+          },
         }}
       >
         <CardMedia
           component="img"
           height="300"
           image={proxiedImageUrl}
-          alt={'Instagram Reel'}
-          sx={{ objectFit: 'cover', borderRadius: 3 }}
+          alt="Instagram Reel"
+          sx={{
+            objectFit: 'cover',
+            width: '100%',
+            transition: 'transform 0.4s ease',
+            '&:hover': { transform: 'scale(1.05)' },
+          }}
         />
         <Box
-          className="overlay"
           sx={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            color: '#fff',
+            inset: 0,
+            background:
+              'linear-gradient(to top, rgba(0,0,0,0.75) 15%, rgba(0,0,0,0.05) 85%)',
+            color: 'text.primary',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-end',
             justifyContent: 'center',
             textAlign: 'center',
             opacity: 0,
@@ -47,8 +60,15 @@ const ReelCard = ({ reel, username }) => {
             },
           }}
         >
-          <Typography variant="body2" sx={{ overflowWrap: 'break-word' }}>
-            {'Reel by @' + username}
+          <Typography
+            variant="body2"
+            sx={{
+              color: '#fff',
+              fontWeight: 500,
+              overflowWrap: 'break-word',
+            }}
+          >
+            Reel by @{username}
           </Typography>
         </Box>
       </Card>

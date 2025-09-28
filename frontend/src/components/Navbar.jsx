@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { AppBar, Toolbar, Typography, TextField, Button, Box, InputAdornment } from '@mui/material';
+import { AppBar, Toolbar, Typography, TextField, Button, Box, InputAdornment, IconButton } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 
 const Navbar = ({ onSearch, isLoading }) => {
   const [username, setUsername] = useState('');
@@ -11,13 +12,35 @@ const Navbar = ({ onSearch, isLoading }) => {
     if (trimmed) onSearch(trimmed);
   };
 
+  const handleClear = () => {
+    setUsername('');
+  };
+
   return (
-    <AppBar position="static" sx={{ backgroundColor: 'background.paper', borderBottom: '1px solid #333', boxShadow: 'none' }}>
+    <AppBar
+      position="sticky"
+      sx={{
+        backgroundColor: 'background.paper',
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        boxShadow: 'none',
+      }}
+    >
       <Toolbar sx={{ flexWrap: 'wrap', justifyContent: 'space-between', gap: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
           Influencer Analytics
         </Typography>
-        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, maxWidth: 400, gap: 1 }}>
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexGrow: 1,
+            maxWidth: 420,
+            gap: 1,
+          }}
+        >
           <TextField
             fullWidth
             label="Instagram Username"
@@ -31,6 +54,18 @@ const Navbar = ({ onSearch, isLoading }) => {
               startAdornment: (
                 <InputAdornment position="start">
                   <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+              endAdornment: username && (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={handleClear}
+                    edge="end"
+                    disabled={isLoading}
+                  >
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
                 </InputAdornment>
               ),
             }}

@@ -1,9 +1,9 @@
 export const formatCompactNumber = (number) => {
-  if (number === null || number === undefined || isNaN(number)) {
+  if (number === null || number === undefined || !Number.isFinite(number)) {
     return '0';
   }
 
-  if (number < 1000) {
+  if (Math.abs(number) < 1000) {
     return number.toString();
   }
 
@@ -17,8 +17,9 @@ export const formatCompactNumber = (number) => {
 };
 
 export const formatPercentage = (number) => {
-    if (number === null || number === undefined || isNaN(number)) {
-        return '0%';
-    }
-    return `${number.toFixed(2)}%`;
+  if (number === null || number === undefined || !Number.isFinite(number)) {
+    return '0%';
+  }
+
+  return `${Number(number).toFixed(2)}%`;
 };

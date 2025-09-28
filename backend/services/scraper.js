@@ -23,24 +23,29 @@ const loginToInstagram = async (page) => {
   logger.debug('Navigating to Instagram login...');
   await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('input[name="username"]', { timeout: 30000 });
+
   logger.debug('Typing credentials...');
   await page.type('input[name="username"]', process.env.INSTAGRAM_USER, { delay: 50 });
   await page.type('input[name="password"]', process.env.INSTAGRAM_PASS, { delay: 50 });
+
   logger.debug('Submitting login form...');
   await Promise.all([
     page.click('button[type="submit"]'),
     page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
   ]);
+
   try {
     const notNowButtonSelector = 'button:has-text("Not now")';
     await page.waitForSelector(notNowButtonSelector, { timeout: 10000 });
     await page.click(notNowButtonSelector);
-  } catch (e) { }
+  } catch (e) {}
+
   try {
     const saveInfoButton = 'button:has-text("Save Info")';
     await page.waitForSelector(saveInfoButton, { timeout: 10000 });
     await page.click(saveInfoButton);
-  } catch (e) { }
+  } catch (e) {}
+
   await page.waitForSelector('a[href="#"]', { timeout: 30000 });
 
   const cookies = await page.cookies();
@@ -49,12 +54,14 @@ const loginToInstagram = async (page) => {
     { cookies: JSON.stringify(cookies) },
     { upsert: true, new: true }
   );
+
   logger.info('Session saved successfully.');
 };
 
 const restoreSession = async (page) => {
   const savedSession = await Session.findOne({ name: 'instagram_session' });
   if (!savedSession || !savedSession.cookies) return false;
+
   try {
     const cookies = JSON.parse(savedSession.cookies);
     const sanitizedCookies = cookies.map(cookie => {
@@ -63,6 +70,7 @@ const restoreSession = async (page) => {
     });
     await page.setCookie(...sanitizedCookies);
     await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle2' });
+
     return await page.evaluate(() => !document.querySelector('input[name="username"]'));
   } catch (err) {
     logger.error('Failed to restore session:', err.message);
@@ -73,16 +81,18 @@ const restoreSession = async (page) => {
 export const scrapeInstagramProfile = async (username) => {
   let browser = null;
   let page = null;
+
   try {
     logger.debug('Launching browser...');
     browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     });
+
     page = await browser.newPage();
     await page.setExtraHTTPHeaders({
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9'
+      'Accept-Language': 'en-US,en;q=0.9',
     });
 
     if (!await restoreSession(page)) {
@@ -105,10 +115,10 @@ export const scrapeInstagramProfile = async (username) => {
         posts: [
           'header ul li:nth-child(1) > div > a > span > span',
           'header ul li:nth-child(1) button span span',
-          'header ul li:nth-child(1) span'
+          'header ul li:nth-child(1) span',
         ],
         followers: ['header ul li:nth-child(2) a span span'],
-        following: ['header ul li:nth-child(3) a span span']
+        following: ['header ul li:nth-child(3) a span span'],
       };
 
       const query = (selectors, attribute = 'innerText') => {
@@ -119,7 +129,7 @@ export const scrapeInstagramProfile = async (username) => {
               const value = attribute === 'innerText' ? element.innerText : element.getAttribute(attribute);
               if (value) return value.trim();
             }
-          } catch (err) { }
+          } catch (err) {}
         }
         return '';
       };
@@ -137,6 +147,7 @@ export const scrapeInstagramProfile = async (username) => {
     if (!profileData || !profileData.profilePicUrl) {
       throw new ApiError(`Failed to scrape Instagram profile data for ${username}.`, 500);
     }
+
     logger.debug('Profile data extracted.');
 
     const pageHtml = await page.content();
@@ -160,6 +171,7 @@ export const scrapeInstagramProfile = async (username) => {
       let scrollCount = 0;
       const maxScrolls = 15;
       let foundCachedItem = false;
+
       await page.waitForSelector('main a[href*="/p/"] img', { timeout: 15000 });
 
       while (scrollCount < maxScrolls && !foundCachedItem) {
@@ -195,6 +207,7 @@ export const scrapeInstagramProfile = async (username) => {
             newMediaItems.set(item.shortcode, item);
           }
         }
+
         if (foundCachedItem) break;
 
         const postsCount = Array.from(newMediaItems.values()).filter(i => i.type === 'post').length;
@@ -205,6 +218,7 @@ export const scrapeInstagramProfile = async (username) => {
         await new Promise(resolve => setTimeout(resolve, 2000));
         scrollCount++;
       }
+
       allItems = Array.from(newMediaItems.values());
       logger.info(`Total new media items collected: ${allItems.length}`);
     } else {

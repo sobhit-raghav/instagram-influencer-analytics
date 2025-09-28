@@ -7,17 +7,24 @@ const PostCard = ({ post, username }) => {
     : '';
 
   return (
-    <Link href={postUrl} target="_blank" rel="noopener noreferrer" underline="none">
+    <Link
+      href={postUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      underline="none"
+      sx={{ display: 'block', height: '100%' }}
+    >
       <Card
         sx={{
           position: 'relative',
           height: '100%',
           borderRadius: 3,
           overflow: 'hidden',
-          transition: 'transform 0.3s, box-shadow 0.3s',
+          backgroundColor: 'background.paper',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
           '&:hover': {
-            transform: 'scale(1.03)',
-            boxShadow: '0 8px 20px rgba(0,0,0,0.4)',
+            transform: 'translateY(-6px) scale(1.02)',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.6)',
           },
         }}
       >
@@ -25,21 +32,23 @@ const PostCard = ({ post, username }) => {
           component="img"
           height="280"
           image={proxiedImageUrl}
-          alt={'Instagram Post'}
-          sx={{ objectFit: 'cover', width: '100%' }}
+          alt="Instagram Post"
+          sx={{
+            objectFit: 'cover',
+            width: '100%',
+            transition: 'transform 0.4s ease',
+            '&:hover': { transform: 'scale(1.05)' },
+          }}
         />
         <Box
-          className="overlay"
           sx={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            color: '#fff',
+            inset: 0,
+            background:
+              'linear-gradient(to top, rgba(0,0,0,0.7) 20%, rgba(0,0,0,0) 80%)',
+            color: 'text.primary',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-end',
             justifyContent: 'center',
             textAlign: 'center',
             opacity: 0,
@@ -50,8 +59,15 @@ const PostCard = ({ post, username }) => {
             },
           }}
         >
-          <Typography variant="body2" sx={{ overflowWrap: 'break-word' }}>
-            {'Post by @' + username}
+          <Typography
+            variant="body2"
+            sx={{
+              color: '#fff',
+              fontWeight: 500,
+              overflowWrap: 'break-word',
+            }}
+          >
+            Post by @{username}
           </Typography>
         </Box>
       </Card>
