@@ -2,12 +2,13 @@ import { Card, CardContent, Grid, Avatar, Typography, Box, Stack, Link } from '@
 import LockIcon from '@mui/icons-material/Lock';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { formatCompactNumber } from '../utils/formatNumbers';
+import { API_URL } from '../api/api';
 
 const ProfileCard = ({ profile }) => {
   if (!profile) return null;
 
   const proxiedImageUrl = profile.profilePicUrl
-    ? `http://localhost:8080/api/proxy?url=${encodeURIComponent(profile.profilePicUrl)}`
+    ? `${API_URL}/proxy?url=${encodeURIComponent(profile.profilePicUrl)}`
     : '';
   const instaUrl = `https://www.instagram.com/${profile.username}/`;
 

@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+export const API_URL = 'http://localhost:8080/api';
+
 const API = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: API_URL,
 });
 
 export const getInfluencerProfile = async (username) => {

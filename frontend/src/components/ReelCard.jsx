@@ -1,9 +1,10 @@
 import { Card, CardMedia, Typography, Box, Link } from '@mui/material';
+import { API_URL } from '../api/api';
 
 const ReelCard = ({ reel, username }) => {
   const reelUrl = `https://www.instagram.com/reel/${reel.shortcode}/`;
   const proxiedImageUrl = reel.thumbnailUrl
-    ? `http://localhost:8080/api/proxy?url=${encodeURIComponent(reel.thumbnailUrl)}`
+    ? `${API_URL}/proxy?url=${encodeURIComponent(reel.thumbnailUrl)}`
     : '';
 
   return (

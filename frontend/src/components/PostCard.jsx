@@ -1,9 +1,10 @@
 import { Card, CardMedia, Typography, Box, Link } from '@mui/material';
+import { API_URL } from '../api/api';
 
 const PostCard = ({ post, username }) => {
   const postUrl = `https://www.instagram.com/p/${post.shortcode}/`;
   const proxiedImageUrl = post.imageUrl
-    ? `http://localhost:8080/api/proxy?url=${encodeURIComponent(post.imageUrl)}`
+    ? `${API_URL}/proxy?url=${encodeURIComponent(post.imageUrl)}`
     : '';
 
   return (
