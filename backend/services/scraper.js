@@ -95,25 +95,37 @@ export const scrapeInstagramProfile = async (username) => {
     await page.goto(url, { waitUntil: 'networkidle2' });
     await page.waitForSelector('header', { timeout: 15000 });
     const profileData = await page.evaluate(() => {
-      const SELECTORS = {
-        profilePic: 'header img',
-        name: 'header section > div > div > span',
-        bio: 'header section > div > div > div > a > div',
-        posts: 'header ul li:nth-child(1) button span span',
-        followers: 'header ul li:nth-child(2) a span span',
-        following: 'header ul li:nth-child(3) a span span',
+      const query = (selectors, attribute = 'innerText') => {
+        for (const selector of selectors) {
+          const element = document.querySelector(selector);
+          if (element) {
+            const value = attribute === 'innerText' ? element.innerText : element.getAttribute(attribute);
+            if (value) return value.trim();
+          }
+        }
+        return '';
       };
 
-      const getText = (selector) => document.querySelector(selector)?.innerText || '';
-      const getAttribute = (selector, attr) => document.querySelector(selector)?.[attr] || '';
+      const SELECTORS = {
+        profilePic: ['header img'],
+        name: ['header h2', 'header section > div > div > span'],
+        bio: ['header h1', 'header section > div > span > div > span'],
+        posts: [
+          'header ul li:nth-child(1) > div > a > span > span',
+          'header ul li:nth-child(1) button span span',
+          'header ul li:nth-child(1) span'
+        ],
+        followers: [`a[href*="/followers/"] span`, 'header ul li:nth-child(2) button span'],
+        following: [`a[href*="/following/"] span`, 'header ul li:nth-child(3) button span'],
+      };
 
       return {
-        profilePicUrl: getAttribute(SELECTORS.profilePic, 'src'),
-        name: getText(SELECTORS.name),
-        bio: getText(SELECTORS.bio),
-        postsCount: getText(SELECTORS.posts),
-        followers: getAttribute(SELECTORS.followers, 'title') || getText(SELECTORS.followers),
-        following: getText(SELECTORS.following),
+        profilePicUrl: query(SELECTORS.profilePic, 'src'),
+        name: query(SELECTORS.name),
+        bio: query(SELECTORS.bio),
+        postsCount: query(SELECTORS.posts),
+        followers: query(SELECTORS.followers, 'title') || query(SELECTORS.followers),
+        following: query(SELECTORS.following),
       };
     });
     if (!profileData || !profileData.profilePicUrl) {
