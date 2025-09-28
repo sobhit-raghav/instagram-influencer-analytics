@@ -58,7 +58,7 @@ const InfluencerPage = () => {
           <Box sx={{ display: 'flex', justifyContent: 'center', my: 10 }}>
             <CircularProgress size={60} />
             <Typography variant="h6" sx={{ ml: 2, alignSelf: 'center' }}>
-              Scraping live data for @{searchedUsername}...
+              Scraping data for @{searchedUsername}...
             </Typography>
           </Box>
         )}

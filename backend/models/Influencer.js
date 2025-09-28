@@ -16,10 +16,12 @@ const influencerSchema = new mongoose.Schema(
     profilePicUrl: {
       type: String,
       required: false,
+      default: '',
     },
     bio: {
       type: String,
       required: false,
+      default: '',
     },
     followers: {
       type: Number,

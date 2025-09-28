@@ -1,4 +1,4 @@
-import { Card, CardContent, Grid, Avatar, Typography, Box, Stack } from '@mui/material';
+import { Card, CardContent, Grid, Avatar, Typography, Box, Stack, Link } from '@mui/material';
 import { formatCompactNumber } from '../utils/formatNumbers';
 
 const ProfileCard = ({ profile }) => {
@@ -7,6 +7,8 @@ const ProfileCard = ({ profile }) => {
   const proxiedImageUrl = profile.profilePicUrl 
     ? `http://localhost:8080/api/proxy?url=${encodeURIComponent(profile.profilePicUrl)}` 
     : '';
+
+  const instaUrl = `https://www.instagram.com/${profile.username}/`;
 
   return (
     <Card>
@@ -24,11 +26,18 @@ const ProfileCard = ({ profile }) => {
               <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
                 {profile.name}
               </Typography>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                @{profile.username}
-              </Typography>
+              <Link 
+                href={instaUrl} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                underline="hover"
+              >
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  @{profile.username}
+                </Typography>
+              </Link>
               <Typography variant="body1" paragraph sx={{ mt: 1 }}>
-                {profile.bio}
+                {profile.bio || ''}
               </Typography>
               <Stack direction="row" spacing={3} sx={{ mt: 2 }}>
                 <Box textAlign="center">
