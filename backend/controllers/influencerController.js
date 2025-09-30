@@ -9,7 +9,7 @@ import logger from '../utils/logger.js';
 const getFullProfileResponse = async (influencerId) => {
   const [influencer, posts, reels] = await Promise.all([
     Influencer.findById(influencerId),
-    Post.find({ influencer: influencerId }).sort({ postedAt: -1 }).limit(10),
+    Post.find({ influencer: influencerId }).sort({ postedAt: -1 }).limit(5),
     Reel.find({ influencer: influencerId }).sort({ postedAt: -1 }).limit(5),
   ]);
 
@@ -23,14 +23,28 @@ const getInfluencerProfile = async (req, res, next) => {
       return next(new ApiError('Username is required in the request parameters.', 400));
     }
 
-    logger.info(`Always fetching live data for "${username}". Starting scrape.`);
     const scrapedData = await scrapeInstagramProfile(username);
     if (!scrapedData) {
       return next(new ApiError(`Profile for '${username}' not found or could not be scraped.`, 404));
     }
 
+    const postShortcodes = scrapedData.posts.map(p => p.shortcode);
+    const reelShortcodes = scrapedData.reels.map(r => r.shortcode);
+
+    const [existingPosts, existingReels] = await Promise.all([
+      Post.find({ shortcode: { $in: postShortcodes } }),
+      Reel.find({ shortcode: { $in: reelShortcodes } }),
+    ]);
+
+    const existingPostsMap = new Map(existingPosts.map(p => [p.shortcode, p]));
+    const existingReelsMap = new Map(existingReels.map(r => [r.shortcode, r]));
+
     const postsWithAnalysis = await Promise.all(
       scrapedData.posts.map(async (post) => {
+        const existing = existingPostsMap.get(post.shortcode);
+        if (existing?.analysis?.vibe && existing.analysis.vibe !== 'N/A') {
+          return { ...post, analysis: existing.analysis };
+        }
         const analysisData = await analyzeImage(post.imageUrl);
         return { ...post, analysis: analysisData };
       })
@@ -38,7 +52,11 @@ const getInfluencerProfile = async (req, res, next) => {
 
     const reelsWithAnalysis = await Promise.all(
       scrapedData.reels.map(async (reel) => {
-        const analysisData = await analyzeVideo(reel.videoUrl);
+        const existing = existingReelsMap.get(reel.shortcode);
+        if (existing?.analysis?.vibe && existing.analysis.vibe !== 'N/A') {
+          return { ...reel, analysis: existing.analysis };
+        }
+        const analysisData = await analyzeVideo(reel.thumbnailUrl);
         return { ...reel, analysis: analysisData };
       })
     );
@@ -71,7 +89,7 @@ const getInfluencerProfile = async (req, res, next) => {
       await Reel.bulkWrite(reelOps);
     }
     
-    logger.info(`Successfully processed and stored data for "${username}".`);
+    logger.info(`Successfully stored data for "${username}"`);
     const finalProfile = await getFullProfileResponse(influencer._id);
     
     res.status(200).json({

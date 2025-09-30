@@ -25,7 +25,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { formatCompactNumber, formatPercentage } from '../utils/formatNumbers';
-import { API_URL } from '../api/api';
+import { API_URL, INSTAGRAM_URL } from '../api/api';
 import AnalyticsCharts from './AnalyticsCharts';
 
 const StatItem = ({ value, label, icon: Icon, trend, color = 'primary' }) => {
@@ -135,7 +135,7 @@ const ProfileCard = ({ profile, posts }) => {
   const proxiedImageUrl = profile.profilePicUrl
     ? `${API_URL}/proxy?url=${encodeURIComponent(profile.profilePicUrl)}`
     : '';
-  const instaUrl = `https://www.instagram.com/${profile.username}/`;
+  const instaUrl = `${INSTAGRAM_URL}/${profile.username}/`;
 
   const primaryStats = [
     { 

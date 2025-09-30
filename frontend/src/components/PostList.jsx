@@ -163,7 +163,7 @@ const PostList = ({ posts }) => {
                           }}
                         />
                       )}
-                      {post.analysis?.tags?.slice(0, 3).map((tag) => (
+                      {post.analysis?.tags?.slice(1, 4).map((tag) => (
                         <Chip
                           key={tag}
                           icon={<LocalOfferIcon sx={{ fontSize: 14 }} />}
@@ -184,19 +184,6 @@ const PostList = ({ posts }) => {
                           }}
                         />
                       ))}
-                      {post.analysis?.tags?.length > 3 && (
-                        <Chip
-                          label={`+${post.analysis.tags.length - 3}`}
-                          size="small"
-                          sx={{
-                            backgroundColor: 'rgba(139, 148, 158, 0.1)',
-                            border: '1px solid rgba(139, 148, 158, 0.3)',
-                            color: 'text.secondary',
-                            fontWeight: 600,
-                            fontSize: '0.7rem',
-                          }}
-                        />
-                      )}
                     </Stack>
                   )}
                 </Stack>

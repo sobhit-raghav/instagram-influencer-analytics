@@ -187,7 +187,7 @@ const ReelList = ({ reels }) => {
                       )}
                       
                       {/* Tags */}
-                      {reel.analysis?.tags?.slice(0, 2).map((tag) => (
+                      {reel.analysis?.tags?.slice(1, 4).map((tag) => (
                         <Chip
                           key={tag}
                           icon={<LocalOfferIcon sx={{ fontSize: 14 }} />}
@@ -208,44 +208,6 @@ const ReelList = ({ reels }) => {
                           }}
                         />
                       ))}
-                      
-                      {/* Events */}
-                      {reel.analysis?.events?.slice(0, 2).map((event) => (
-                        <Chip
-                          key={event}
-                          icon={<EventIcon sx={{ fontSize: 14 }} />}
-                          label={event}
-                          size="small"
-                          sx={{
-                            background: 'linear-gradient(135deg, rgba(240, 180, 41, 0.12) 0%, rgba(240, 180, 41, 0.05) 100%)',
-                            border: '1px solid rgba(240, 180, 41, 0.25)',
-                            color: '#FFC940',
-                            fontWeight: 500,
-                            fontSize: '0.7rem',
-                            transition: 'all 0.2s ease',
-                            '&:hover': {
-                              backgroundColor: 'rgba(240, 180, 41, 0.18)',
-                              borderColor: 'rgba(240, 180, 41, 0.4)',
-                              transform: 'translateY(-2px)',
-                            },
-                          }}
-                        />
-                      ))}
-                      
-                      {/* Overflow indicator */}
-                      {((reel.analysis?.tags?.length || 0) + (reel.analysis?.events?.length || 0)) > 4 && (
-                        <Chip
-                          label={`+${((reel.analysis?.tags?.length || 0) + (reel.analysis?.events?.length || 0)) - 4}`}
-                          size="small"
-                          sx={{
-                            backgroundColor: 'rgba(139, 148, 158, 0.1)',
-                            border: '1px solid rgba(139, 148, 158, 0.3)',
-                            color: 'text.secondary',
-                            fontWeight: 600,
-                            fontSize: '0.7rem',
-                          }}
-                        />
-                      )}
                     </Stack>
                   )}
                 </Stack>

@@ -14,11 +14,11 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { API_URL } from '../api/api';
+import { API_URL, INSTAGRAM_URL } from '../api/api';
 import { formatCompactNumber } from '../utils/formatNumbers';
 
 const PostCard = ({ post }) => {
-  const postUrl = `https://www.instagram.com/p/${post.shortcode}/`;
+  const postUrl = `${INSTAGRAM_URL}/p/${post.shortcode}/`;
   const proxiedImageUrl = post.imageUrl
     ? `${API_URL}/proxy?url=${encodeURIComponent(post.imageUrl)}`
     : '';
@@ -254,32 +254,6 @@ const PostCard = ({ post }) => {
                 }}
               />
             </Stack>
-            
-            {/* Engagement indicator */}
-            <Tooltip title={`${engagementRate}% likes ratio`} arrow>
-              <Box
-                sx={{
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: 1,
-                  backgroundColor: 'rgba(63, 185, 80, 0.2)',
-                  border: '1px solid rgba(63, 185, 80, 0.4)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: '#3FB950',
-                    fontWeight: 700,
-                    fontSize: '0.7rem',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  {engagementRate}%
-                </Typography>
-              </Box>
-            </Tooltip>
           </Stack>
         </Box>
       </Box>

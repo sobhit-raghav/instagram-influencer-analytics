@@ -127,7 +127,7 @@ export const scrapeInstagramProfile = async (username) => {
       });
     }
 
-    const engagement = calculateEngagement(posts, userData.edge_followed_by.count);
+    const engagement = calculateEngagement(posts.slice(0, 5), userData.edge_followed_by.count);
 
     const profile = {
       username: userData.username,
@@ -146,7 +146,7 @@ export const scrapeInstagramProfile = async (username) => {
 
     return {
       profile,
-      posts: posts.slice(0, 10),
+      posts: posts.slice(0, 5),
       reels: reels.slice(0, 5),
     };
 

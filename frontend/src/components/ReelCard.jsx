@@ -18,11 +18,11 @@ import MovieIcon from '@mui/icons-material/Movie';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
-import { API_URL } from '../api/api';
+import { API_URL, INSTAGRAM_URL } from '../api/api';
 import { formatCompactNumber } from '../utils/formatNumbers';
 
 const ReelCard = ({ reel }) => {
-  const reelUrl = `https://www.instagram.com/reel/${reel.shortcode}/`;
+  const reelUrl = `${INSTAGRAM_URL}/reel/${reel.shortcode}/`;
   const proxiedImageUrl = reel.thumbnailUrl
     ? `${API_URL}/proxy?url=${encodeURIComponent(reel.thumbnailUrl)}`
     : '';

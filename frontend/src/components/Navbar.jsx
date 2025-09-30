@@ -145,7 +145,7 @@ const Navbar = ({ onSearch, isLoading }) => {
               onBlur={() => setIsFocused(false)}
               onKeyDown={handleKeyDown}
               disabled={isLoading}
-              placeholder="e.g., cristiano or @mrbeast"
+              placeholder="e.g., cristiano"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
