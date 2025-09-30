@@ -15,7 +15,38 @@ const postSchema = new mongoose.Schema(
     imageUrl: {
       type: String,
       required: true,
-    }
+    },
+    caption: {
+      type: String,
+      default: '',
+    },
+    likesCount: {
+      type: Number,
+      default: 0,
+    },
+    commentsCount: {
+      type: Number,
+      default: 0,
+    },
+    postedAt: {
+      type: Date,
+      required: true,
+    },
+    analysis: {
+      tags: {
+        type: [String],
+        default: [],
+      },
+      vibe: {
+        type: String,
+        default: 'N/A',
+      },
+      quality: {
+        lighting: { type: String, default: 'N/A' },
+        visualAppeal: { type: String, default: 'N/A' },
+        consistency: { type: String, default: 'N/A' },
+      },
+    },
   },
   {
     timestamps: true,

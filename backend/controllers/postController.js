@@ -2,19 +2,6 @@ import Influencer from '../models/Influencer.js';
 import Post from '../models/Post.js';
 import { ApiError } from '../middlewares/errorHandler.js';
 
-/**
- * Retrieves the 10 most recent posts for a given influencer from the database.
- *
- * @description
- * This function is designed to be a fast, read-only endpoint. It first finds an
- * influencer by their username to get their unique ID. It then uses this ID to
- * query the Posts collection, fetching the 10 most recent entries by sorting
- * them by their `postedAt` timestamp in descending order.
- *
- * @param {object} req - The Express request object, containing the username in params.
- * @param {object} res - The Express response object.
- * @param {function} next - The Express next middleware function for error handling.
- */
 const getInfluencerPosts = async (req, res, next) => {
   try {
     const { username } = req.params;
@@ -30,7 +17,7 @@ const getInfluencerPosts = async (req, res, next) => {
     }
 
     const posts = await Post.find({ influencer: influencer._id })
-      .sort({ createdAt: -1 })
+      .sort({ postedAt: -1 })
       .limit(10);
 
     res.status(200).json({

@@ -38,13 +38,25 @@ const influencerSchema = new mongoose.Schema(
       required: true,
       default: 0,
     },
-     isPrivate: {
+    isPrivate: {
       type: Boolean,
       default: false,
     },
     isVerified: {
       type: Boolean,
       default: false,
+    },
+    averageLikes: {
+      type: Number,
+      default: 0,
+    },
+    averageComments: {
+      type: Number,
+      default: 0,
+    },
+    engagementRate: {
+      type: Number,
+      default: 0,
     },
   },
   {

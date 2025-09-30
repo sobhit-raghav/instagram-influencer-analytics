@@ -4,8 +4,6 @@ import cors from 'cors';
 import connectDB from './config/db.js';
 
 import influencerRoutes from './routes/influencerRoutes.js';
-import postRoutes from './routes/postRoutes.js';
-import reelRoutes from './routes/reelRoutes.js';
 import proxyRoutes from './routes/proxyRoutes.js';
 import { notFound, errorHandler } from './middlewares/errorHandler.js';
 
@@ -23,12 +21,9 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/influencer', influencerRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/reels', reelRoutes);
 app.use('/api/proxy', proxyRoutes);
 
 app.use(notFound);
-
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 8080;

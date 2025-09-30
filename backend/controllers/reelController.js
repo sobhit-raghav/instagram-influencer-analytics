@@ -2,19 +2,6 @@ import Influencer from '../models/Influencer.js';
 import Reel from '../models/Reel.js';
 import { ApiError } from '../middlewares/errorHandler.js';
 
-/**
- * Retrieves the 5 most recent reels for a given influencer from the database.
- *
- * @description
- * This is a fast, read-only endpoint that works in two steps. First, it finds an
- * influencer by their username to retrieve their unique database ID. Second, it
- * uses that ID to query the Reels collection for the 5 most recent documents,
- * sorted by their `postedAt` timestamp in descending order.
- *
- * @param {object} req - The Express request object, containing the username in params.
- * @param {object} res - The Express response object.
- * @param {function} next - The Express next middleware function for error handling.
- */
 const getInfluencerReels = async (req, res, next) => {
   try {
     const { username } = req.params;
@@ -30,7 +17,7 @@ const getInfluencerReels = async (req, res, next) => {
     }
 
     const reels = await Reel.find({ influencer: influencer._id })
-      .sort({ createdAt: -1 })
+      .sort({ postedAt: -1 })
       .limit(5);
 
     res.status(200).json({
