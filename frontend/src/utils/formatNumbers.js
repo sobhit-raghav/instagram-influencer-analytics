@@ -18,8 +18,14 @@ export const formatCompactNumber = (number) => {
 
 export const formatPercentage = (number) => {
   if (number === null || number === undefined || !Number.isFinite(number)) {
-    return '0%';
+    return '0.00%';
   }
 
-  return `${Number(number).toFixed(2)}%`;
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'percent',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  return formatter.format(number / 100);
 };
