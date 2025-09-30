@@ -1,23 +1,41 @@
 # Instagram Influencer Analytics Dashboard
 
-A full-stack web application designed to scrape and display profile data for any public Instagram influencer.
+A full-stack web application designed to scrape, analyze, and display profile data and engagement metrics for any public Instagram influencer, featuring AI-powered content analysis.
 
-## Tech Stack
+## ✨ Features
 
-- **Frontend:** React, Vite, Material-UI (MUI), Axios
-- **Backend:** Node.js, Express.js
-- **Database:** MongoDB with Mongoose
-- **Scraping:** Puppeteer
+- **Profile Scraping:** Fetches key profile data including follower/following counts, post counts, bio, and verification status
+- **Engagement Analytics:** Automatically calculates average likes, average comments, and engagement rate based on recent posts
+- **AI-Powered Tagging:** Uses the Clarifai API to perform image recognition, generating relevant tags and a "vibe" for each post and reel
+- **Data Visualization:** Displays key metrics and performance trends using interactive charts
+- **Persistent Caching:** Caches AI analysis results in the database to improve performance and reduce redundant API calls on subsequent requests
 
----
+## 🛠️ Tech Stack
 
-## Setup and Installation
+### Frontend
+- React
+- Vite
+- Material-UI (MUI)
 
-### Prerequisites
-
+### Backend
 - Node.js
-- npm or yarn
-- MongoDB
+- Express.js
+
+### Database
+- MongoDB with Mongoose
+
+### AI Analysis
+- Clarifai API
+
+## 📦 Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** (v18 or higher recommended)
+- **npm** or **yarn**
+- **MongoDB** instance (local or cloud service like MongoDB Atlas)
+
+## 🚀 Installation
 
 ### 1. Clone the Repository
 
@@ -35,27 +53,6 @@ cd backend
 npm install
 ```
 
-Next, create a `.env` file in the backend directory. This file is crucial for storing your environment variables.
-
-Open the `.env` file and add the following configuration. You must use a test/burner Instagram account for the credentials.
-
-```env
-# Server Configuration
-PORT=8080
-DEBUG=false # Set to true for logging
-
-# Node Environment
-NODE_ENV=development # Change to 'production' in a production environment 
-
-# MongoDB Connection String
-MONGO_URI=mongodb://localhost:27017/influencerDB
-
-# Instagram Scraper Credentials (USE A TEST ACCOUNT)
-INSTAGRAM_BASE_URL=https://www.instagram.com
-INSTAGRAM_USER="your_test_instagram_username"
-INSTAGRAM_PASS="your_test_instagram_password"
-```
-
 ### 3. Frontend Setup
 
 Navigate to the frontend directory and install its dependencies.
@@ -65,11 +62,54 @@ cd ../frontend
 npm install
 ```
 
-The frontend is configured to connect to the backend at `http://localhost:8080` by default.
+## ⚙️ Configuration
 
-## Running the Application
+### Backend Environment Variables
 
-To run the application, you will need to have both the backend and frontend servers running concurrently in two separate terminal windows.
+Create a `.env` file in the `backend` directory with the following configuration:
+
+```env
+# Server Configuration
+PORT=8080
+DEBUG=false # Set to true for logging
+
+# MongoDB Connection String
+MONGO_URI="YOUR_MONGODB_CONNECTION_STRING"
+
+# Node Environment
+NODE_ENV=development # Change to 'production' in a production environment 
+
+# Clarifai API Credentials
+CLARIFAI_API_KEY="YOUR_CLARIFAI_API_KEY"
+CLARIFAI_USER_ID="YOUR_CLARIFAI_USER_ID"
+CLARIFAI_APP_ID="YOUR_CLARIFAI_APP_ID"
+```
+
+### Getting Clarifai Credentials
+
+1. Sign up for a free "Community" account at [Clarifai](https://www.clarifai.com/)
+2. Create a new application in your dashboard
+3. Navigate to your application's settings
+4. Copy the following values:
+   - **API Key**
+   - **User ID**
+   - **App ID**
+5. Paste these values into your `.env` file
+
+### MongoDB Setup
+
+**Option 1: Local MongoDB**
+- Install MongoDB locally and use `mongodb://localhost:27017/instagram-analytics`
+
+**Option 2: MongoDB Atlas (Recommended)**
+1. Create a free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a new cluster
+3. Get your connection string
+4. Replace `YOUR_MONGODB_CONNECTION_STRING` in the `.env` file
+
+## 🏃 Running the Application
+
+You need to run both the backend and frontend servers concurrently in separate terminal windows.
 
 ### Terminal 1: Start the Backend Server
 
@@ -87,15 +127,21 @@ cd frontend
 npm run dev
 ```
 
-The React development server will start, and your application will open in a browser window, typically at `http://localhost:5173`.
+The React development server will start on `http://localhost:5173`
 
-## Usage
+Your browser should automatically open to the application. If not, navigate to `http://localhost:5173` manually.
 
-1. Open your browser and navigate to the frontend URL (usually `http://localhost:5173`)
-2. Enter an Instagram username in the search field
-3. The application will scrape and display the influencer's profile data, including recent posts and reels
-4. Click on any post or reel card to view the original content on Instagram
+## 🔄 How It Works
 
-## Important Notes
+1. **Profile Fetching:** When a username is submitted, the backend makes a direct API call to a public Instagram endpoint to fetch the user's profile data and recent media list
 
-- **Use a Test Account:** Always use a burner/test Instagram account for scraping credentials. Never use your personal account.
+2. **Data Enrichment:** The backend makes secondary API calls to get accurate like/comment counts for all media types, including carousels
+
+3. **AI Analysis:** For each new post or reel, the backend calls the Clarifai API to perform image analysis, generating:
+   - Relevant tags
+   - Content "vibe"
+   - Detected events
+
+4. **Caching:** Analysis data is cached in MongoDB. On future requests for the same user, the backend reuses saved analysis data instead of making redundant Clarifai API calls
+
+5. **Visualization:** The complete, enriched data is sent to the frontend and displayed in a responsive dashboard with interactive charts
