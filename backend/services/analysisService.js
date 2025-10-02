@@ -2,8 +2,12 @@ import { ClarifaiStub, grpc } from 'clarifai-nodejs-grpc';
 import logger from '../utils/logger.js';
 
 const stub = ClarifaiStub.grpc();
-const metadata = new grpc.Metadata();
-metadata.set("authorization", `Key ${process.env.CLARIFAI_API_KEY}`);
+
+const getMetadata = () => {
+  const metadata = new grpc.Metadata();
+  metadata.set("authorization", `Key ${process.env.CLARIFAI_API_KEY}`);
+  return metadata;
+};
 
 const defaultAnalysis = {
   tags: [],
@@ -16,7 +20,7 @@ const defaultAnalysis = {
 };
 
 const MODEL_ID = process.env.CLARIFAI_MODEL_ID || 'aaa03c23b3724a16a56b629203edc62c';
-const MODEL_VERSION_ID = process.env.CLARIFAI_MODEL_VERSION_ID || 'aa7f35c01e0642fda5cf400f543e7c40';  
+const MODEL_VERSION_ID = process.env.CLARIFAI_MODEL_VERSION_ID || 'aa7f35c01e0642fda5cf400f543e7c40';
 
 const analyzeMediaWithClarifai = (imageUrl) => {
   return new Promise((resolve) => {
@@ -38,7 +42,7 @@ const analyzeMediaWithClarifai = (imageUrl) => {
       ],
     };
 
-    stub.PostModelOutputs(request, metadata, (err, response) => {
+    stub.PostModelOutputs(request, getMetadata(), (err, response) => {
       if (err) {
         logger.error(`Clarifai API error: ${err.message}`, { err });
         resolve(null);
@@ -48,7 +52,7 @@ const analyzeMediaWithClarifai = (imageUrl) => {
       const status = response?.status;
       if (!status || status.code !== 10000) {
         logger.error(
-          `Clarifai request failed: code=${status?.code} desc=${status?.description}`, 
+          `Clarifai request failed: code=${status?.code} desc=${status?.description}`,
           { status }
         );
         resolve(null);

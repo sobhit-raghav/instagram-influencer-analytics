@@ -1,5 +1,5 @@
 import express from 'express';
-// import dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './config/db.js';
 
@@ -7,7 +7,7 @@ import influencerRoutes from './routes/influencerRoutes.js';
 import proxyRoutes from './routes/proxyRoutes.js';
 import { notFound, errorHandler } from './middlewares/errorHandler.js';
 
-// dotenv.config();
+dotenv.config();
 
 connectDB();
 
